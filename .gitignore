@@ -1,0 +1,3 @@
+*.fasl
+ignore/
+test/uncurrent/
