@@ -112,7 +112,7 @@ $Header: /project/cells/cvsroot/cells/fm-utilities.lisp,v 1.21 2008/06/16 12:38:
      name-root
      name-subscript
      kid-no
-
+     n^
      ;; Debug flags
      *fmdbg*
      
@@ -141,6 +141,9 @@ $Header: /project/cells/cvsroot/cells/fm-utilities.lisp,v 1.21 2008/06/16 12:38:
 
 (defmacro u^ (type)
   `(upper self ,type))
+
+(defmacro n^ (type)
+  `(nearest self ,type))
 
 (defmethod kontainer (self) (fm-parent self))
 
