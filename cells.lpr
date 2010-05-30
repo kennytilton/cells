@@ -29,7 +29,7 @@
                  (make-instance 'module :name "test-cc.lisp"))
   :projects (list (make-instance 'project-module :name
                                  "../utils-kt/utils-kt" :show-modules
-                                 nil))
+                                 t))
   :libraries nil
   :distributed-files nil
   :internally-loaded-files nil
