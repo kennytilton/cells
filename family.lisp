@@ -85,7 +85,10 @@ See the Lisp Lesser GNU Public License for more details.
 
   (when (slot-boundp self '.md-name)
     (unless (md-name self)
-      (setf (md-name self) (gentemp (string (c-class-name (class-of self)))))))
+      ; lotsa symbols over time in a web app
+      ;(setf (md-name self) (gentemp (string (c-class-name (class-of self)))))
+      (setf (md-name self) (gensym (string (c-class-name (class-of self)))))
+      ))
  
   (when (and (slot-boundp self '.fm-parent)
           (fm-parent self)
