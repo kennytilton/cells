@@ -3,18 +3,8 @@
 
     Cells -- Automatic Dataflow Managememnt
 
-Copyright (C) 1995, 2006 by Kenneth Tilton
+(See defpackage.lisp for license and copyright notigification)
 
-This library is free software; you can redistribute it and/or
-modify it under the terms of the Lisp Lesser GNU Public License
- (http://opensource.franz.com/preamble.html), known as the LLGPL.
-
-This library is distributed  WITHOUT ANY WARRANTY; without even 
-the implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  
-
-See the Lisp Lesser GNU Public License for more details.
-
-$Header: /project/cells/cvsroot/cells/fm-utilities.lisp,v 1.21 2008/06/16 12:38:04 ktilton Exp $
 |#
 
 
