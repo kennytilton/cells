@@ -25,7 +25,6 @@
                  (make-instance 'module :name "fm-utilities.lisp")
                  (make-instance 'module :name "family-values.lisp")
                  (make-instance 'module :name "test-propagation.lisp")
-                 (make-instance 'module :name "cells-store.lisp")
                  (make-instance 'module :name "test-cc.lisp"))
   :projects (list (make-instance 'project-module :name "../utils-kt/utils-kt"
                                  :show-modules nil))

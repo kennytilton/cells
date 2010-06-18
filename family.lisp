@@ -112,6 +112,8 @@
      :initform nil
      :accessor registry)))
 
+(export! registry?)
+
 #+test
 (let ((c (find-class 'family)))
   (mop::finalize-inheritance c)
