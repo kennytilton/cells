@@ -256,7 +256,7 @@
         (bwhen (p (fm-parent self))
           (fm-find-registered id p must-find?)))
     (when (and must-find? (not must-find?-supplied?))
-      (break "fm-find-registered failed seeking ~a starting search at node ~a" id self))))
+      (error "fm-find-registered failed seeking ~a starting search at node ~a" id self))))
 
 (export! rg? rg!)
 
