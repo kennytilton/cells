@@ -16,6 +16,8 @@
 (defun trcdepth-reset ()
   (setf *trcdepth* 0))
 
+
+
 (defmacro trc (tgt-form &rest os)
   (if (eql tgt-form 'nil)
       '(progn)
@@ -56,7 +58,7 @@
   (force-output stream)
   (values))
 
-(export! brk brkx .bgo bgo *trc-path-id*)
+(export! brk brkx .bgo bgo *trc-path-id* ntrcx)
 
 (define-symbol-macro .bgo (break "go"))
 
@@ -73,6 +75,10 @@
          (call-trc t ,(format nil "TX> ~(~s~)" tgt-form)
            ,@(loop for obj in (or os (list tgt-form))
                    nconcing (list (intern (format nil "~a" obj) :keyword) obj))))))
+
+(defmacro ntrcx (&rest os)
+  (declare (ignore os))
+  '(progn))
   
 (defun call-trc-to-string (fmt$ &rest fmt-args)
     (let ((o$ (make-array '(0) :element-type 'base-char

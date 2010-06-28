@@ -44,6 +44,7 @@
 (defun call-with-integrity (opcode defer-info action code)
   (declare (ignorable code))
   (when *stop*
+    (print :cwi-sees-stop)
     (return-from call-with-integrity))
   (if *within-integrity*
       (if opcode
@@ -73,6 +74,7 @@
                (prog1
                    (funcall action opcode defer-info)
                  (setf *finbiz-id* 0)
+                 ;(print :finishing-business)
                  (finish-business)))))
       (if nil ;; *c-debug*
           (let ((*istack* (list (list opcode defer-info)

@@ -252,7 +252,11 @@
 
 (defmethod fm-find-registered (id self &optional (must-find? self  must-find?-supplied?))
   (or (if (registry? self)
-          (gethash id (registry self))
+          (or (gethash id (registry self))
+            (prog1 nil
+              (when must-find?
+                (loop for k being the hash-keys of (registry self)
+                    do (print `(,id :no-but-yes ,k))))))
         (bwhen (p (fm-parent self))
           (fm-find-registered id p must-find?)))
     (when (and must-find? (not must-find?-supplied?))
