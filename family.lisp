@@ -235,7 +235,7 @@
     (setf (registry self) (make-hash-table :test 'eq))))
 
 (defmethod fm-register (self &optional (guest self))
-  (assert self)
+  (assert self () "fm-register: nil self registering ~a" guest)
   (if (registry? self)
       (progn
         ;(trc "fm-registering" (md-name guest) :with self)
@@ -262,13 +262,19 @@
     (when (and must-find? (not must-find?-supplied?))
       (error "fm-find-registered failed seeking ~a starting search at node ~a" id self))))
 
-(export! rg? rg!)
+(export! rg? rg! fm-dump-lineage)
 
 (defmacro rg? (id)
   `(fm-find-registered ,id self nil))
 
 (defmacro rg! (id)
   `(fm-find-registered ,id self))
+
+(defun fm-dump-lineage (self tag)
+  (when self
+    (print (list tag self))
+    (fm-dump-lineage .pa tag)))
+      
 
 
                

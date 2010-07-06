@@ -115,10 +115,13 @@
 
 (defparameter *to-be-dbg* nil)
 
-(defmacro make-kid (class &rest initargs)
-  `(make-instance ,class
-     ,@initargs
-     :fm-parent (progn (assert self) self)))
+(defmacro make-kid (class &rest ia)
+  (with-gensyms (c)
+    `(let ((,c ,class))
+       (make-instance ,c
+         ,@ia
+         :fm-parent (progn (assert self () "make-kid: self nil making ~a" ,c)
+                      self)))))
 
 (defvar *c-d-d*)
 (defvar *max-d-d*)
