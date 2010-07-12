@@ -27,7 +27,7 @@
                  (make-instance 'module :name "test-propagation.lisp")
                  (make-instance 'module :name "test-cc.lisp"))
   :projects (list (make-instance 'project-module :name "../utils-kt/utils-kt"
-                                 :show-modules t))
+                                 :show-modules nil))
   :libraries nil
   :editable-files nil
   :distributed-files nil

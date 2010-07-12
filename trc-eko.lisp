@@ -38,11 +38,22 @@
             (count-it :tgtnileval)))))))
 
 (defparameter *trc-path-id* nil)
+(defparameter *trc-path-id-filter* nil)
 
+(defun trc-pathp (path)
+  (or (null *trc-path-id-filter*)
+    (if (> (length path)(length *trc-path-id-filter*))
+        (eql 0 (search *trc-path-id-filter* path ))
+      (eql 0 (search path *trc-path-id-filter*)))))
+
+(export! *trc-path-id-filter* trc-pathp)
 (defun call-trc (stream s &rest os)
   ;(break)
   (let ((path (cond
-               (*trc-path-id*)
+               (*trc-path-id* (unless (trc-pathp *trc-path-id*)
+                                
+                                (return-from call-trc))
+                 *trc-path-id*)
                ((and (boundp '*trcdepth*)
                   *trcdepth*)
                 (format nil "~v,,,'.<~d~>> " (mod *trcdepth* 100) *trcdepth*))
