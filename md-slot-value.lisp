@@ -190,6 +190,8 @@ See the Lisp Lesser GNU Public License for more details.
            (bwhen (x (find c *call-stack*)) ;; circularity
              (unless nil ;; *stop*
                (let ()
+                 (print `(:circler ,c))
+                 (print `(*call-stack* ,*call-stack*))
                  (inspect c)
                  (trc "calculating cell:" c (cr-code c))
                  (trc "appears-in-call-stack (newest first): " (length *call-stack*))
