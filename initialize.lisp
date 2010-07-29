@@ -25,9 +25,10 @@ Copyright (C) 1995, 2006 by Kenneth Tilton
   ;
   ; nothing to calculate, but every cellular slot should be output
   ;
-  (trc nil "awaken cell observing" c)
   (when (> *data-pulse-id* (c-pulse-observed c))
+    ;(trc nil "awaken-pulsing" :*dpid* *data-pulse-id* :cdpid (c-pulse-observed c) c)
     (setf (c-pulse-observed c) *data-pulse-id*)
+    (trc nil "awaken cell observing" c *data-pulse-id*)
     (slot-value-observe (c-slot-name c) (c-model c) (c-value c) nil nil c)
     (ephemeral-reset c)))
 

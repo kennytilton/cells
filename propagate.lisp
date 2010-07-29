@@ -107,7 +107,7 @@
             (mapcar 'not-to-be lost))
           (trc nil "no owned lost!!!!!"))))
     
-    ; propagation to callers jumps back in front of client slot-value-observe handling in cells3
+    ; propagation to callers jumps back in front of client slot--value-observe handling in cells3
     ; because model adopting (once done by the kids change handler) can now be done in
     ; shared-initialize (since one is now forced to supply the parent to make-instance).
     ;
@@ -120,10 +120,15 @@
     
     (trc nil "c.propagate observing" c)
 
-    ; this next assertion is just to see if we can ever come this way twice. If so, just
-    ; make it a condition on whether to observe
-    (when t ; breaks algebra (> *data-pulse-id* (c-pulse-observed c))
-      (setf (c-pulse-observed c) *data-pulse-id*)
+
+    (when (or (> *data-pulse-id* (c-pulse-observed c)) ;; breaks algebra 
+            (find (c-lazy c) '(:once-asked :always t))) ;; messy: these can get setfed/propagated twice in one pulse
+      
+      ;;;  check this with its-alive off and see if we should check here for pulse already done
+      ;;(trc nil ":propagate-pulsing" :*dpid* *data-pulse-id* :cdpid (c-pulse-observed c) c)
+      (b-if flushed (md-slot-cell-flushed (c-model c) (c-slot-name c))
+        (setf (flushed-cell-pulse-observed flushed) *data-pulse-id*)
+        (setf (c-pulse-observed c) *data-pulse-id*))
       (slot-value-observe (c-slot-name c) (c-model c)
         (c-value c) prior-value prior-value-supplied c))
     
@@ -132,7 +137,7 @@
     ; with propagation done, ephemerals can be reset. we also do this in c-awaken, so
     ; let the fn decide if C really is ephemeral. Note that it might be possible to leave
     ; this out and use the datapulse to identify obsolete ephemerals and clear them
-    ; when read. That would avoid ever making again bug I had in which I had the reset inside slot-value-observe,
+    ; when read. That would avoid ever making again bug I had in which I had the reset inside slot--value-observe,
     ; thinking that that always followed propagation to callers. It would also make
     ; debugging easier in that I could find the last ephemeral value in the inspector.
     ; would this be bad for persistent CLOS, in which a DB would think there was still a link

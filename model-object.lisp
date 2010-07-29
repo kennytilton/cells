@@ -105,9 +105,6 @@
 
 (defmethod md-awaken :around ((self model-object))
   (when (eql :nascent (md-state self))	
-    
-    ;(trc "awake" (type-of self))
-    ;;#-its-alive!
     (call-next-method))
   self)
 
@@ -151,15 +148,18 @@
           ;; next is an indirect and brittle way to determine that a slot has already been output,
           ;; but I think anything better creates a run-time hit.
           ;;
-          ;; until 2007-10 (unless (cdr (assoc slot-name (cells-flushed self))) ;; make sure not flushed
+          ;; until 2007-10 (unless (cdr (assoc slot-name (cells--flushed self))) ;; make sure not flushed
           ;; but first I worried about it being slow keeping the flushed list /and/ searching, then
           ;; I wondered why a flushed cell should not be observed, constant cells are. So Just Observe It
           
           (let ((flushed (md-slot-cell-flushed self slot-name)))
             (when (or (null flushed) ;; constant, ie, never any cell provided for this slot
-                    (> *data-pulse-id* (c-pulse-observed flushed))) ;; unfrickinlikely
+                    (> *data-pulse-id* (flushed-cell-pulse-observed flushed))) ;; unfrickinlikely
+              #+bahhh (when (and (eq 'cells:.kids slot-name)
+                      (typep self 'qxl::qx-tab-view))
+                (trc "reobserving flushed" flushed))
               (when flushed
-                (setf (c-pulse-observed flushed) *data-pulse-id*)) ;; probably unnecessary
+                (setf (flushed-cell-pulse-observed flushed) *data-pulse-id*)) ;; probably unnecessary
               (slot-value-observe slot-name self (bd-slot-value self slot-name) nil nil flushed))))
 
          ((find (c-lazy c) '(:until-asked :always t))
@@ -177,7 +177,11 @@
   
   (setf (md-state self) :awake)
   self)
-  
+
+(defun hackc (c)
+  (declare (ignorable c))
+  )
+
 ;;; --- utilities, accessors, etc --------------------------------------
 
 (defmethod c-slot-value ((self model-object) slot)
@@ -188,10 +192,26 @@
       (cdr (assoc slot-name (cells self)))
     (get slot-name 'cell)))
 
-(defmethod md-slot-cell-flushed (self slot-name)
+(defun md-cell-flush (c)
+  (push (cons (c-slot-name c)
+          #+its-alive! (c-pulse-observed c)
+          #-its-alive! c)
+    (cells-flushed (c-model c))))
+
+(defun md-slot-cell-flushed (self slot-name)
   (if self
-      (cdr (assoc slot-name (cells-flushed self)))
+      (assoc slot-name (cells-flushed self))
     (get slot-name 'cell)))
+
+(defun flushed-cell-pulse-observed (c)
+  (if (numberp (cdr c)) (cdr c) (c-pulse-observed (cdr c))))
+
+(defun (setf flushed-cell-pulse-observed) (pulse c)
+  (if (numberp (cdr c))
+      (rplacd c pulse)
+    (progn
+      ;; (trc "flush-pulsing" :new pulse :old (if (numberp (cdr c)) (cdr c) (c-pulse-observed (cdr c)))(c-slot-name c))
+      (setf (c-pulse-observed (cdr c)) pulse))))
 
 #+test
 (get 'cgtk::label :cell-types)

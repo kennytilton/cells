@@ -30,10 +30,6 @@
     (setf (slot-value self '.fnz) t)
     (not-to-be self)))
 
-(defmethod not-to-be :around ((self model))
-  ;; #-its-alive! (setf (slot-value self '.dbg-par) (fm-parent self)) ;; before it gets zapped
-  (call-next-method))
-
 (defmethod initialize-instance :after ((self model) &key)
   ;(excl:schedule-finalization self 'md-finalize)
   (when (register? self)
