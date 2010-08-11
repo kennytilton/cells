@@ -366,7 +366,7 @@
                                         (throw 'fm-find-all matches)))))
                               (fm-traverse family traveller :global-search global-search)))))
         (when (and must-find (null matches))
-           (setf *stop* t)
+          (c-stop :fm-find-all-must-find-failed)
           (fm-traverse family (lambda (node)
                                 (trc "known node" (md-name node))) :global-search global-search)
           (break "fm-find-all > *stop*ping...did not find ~a ~a ~a" family md-name global-search)

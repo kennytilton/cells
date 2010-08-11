@@ -228,35 +228,45 @@
 
 (defmethod initialize-instance :after ((self family) &key)
   (when (registry? self)
+    (assert (null (registry self)))
     (setf (registry self) (make-hash-table :test 'eq))))
 
 (defmethod fm-register (self &optional (guest self))
   (assert self () "fm-register: nil self registering ~a" guest)
   (if (registry? self)
       (progn
-        ;(trc "fm-registering" (md-name guest) :with self)
+        (trc "fm-registering" (md-name guest) guest :with self)
+        (assert (registry self) () "fm-register no reg ~a" self)
         (setf (gethash (md-name guest) (registry self)) guest))
     (fm-register (fm-parent self) guest)))
 
 (defmethod fm-check-out (self &optional (guest self))
   (assert self () "oops ~a ~a ~a" self (fm-parent self) (slot-value self '.fm-parent))
   (if (registry? self)
-      (remhash (md-name guest) (registry self))
+      (progn
+        (assert (registry self) () "fm-check-out no reg ~a" self)
+        (trc "removing registered" (md-name guest) :from self)
+        (remhash (md-name guest) (registry self)))
     (bif (p (fm-parent self))
       (fm-check-out p guest)
       (break "oops ~a ~a ~a" self (fm-parent self) (slot-value self '.fm-parent)))))
 
 (defmethod fm-find-registered (id self &optional (must-find? self  must-find?-supplied?))
   (or (if (registry? self)
-          (or (gethash id (registry self))
-            (prog1 nil
-              (when must-find?
-                (loop for k being the hash-keys of (registry self)
-                    do (print `(,id :no-but-yes ,k))))))
+          (progn
+            (assert (registry self) () "fm-find-registered no reg ~a" self)
+            (or (gethash id (registry self))
+              (prog1 nil
+                (when must-find?
+                  (loop for k being the hash-keys of (registry self)
+                      do (print `(:seeking ,id :see-only ,k :in-registry ,self)))))))
         (bwhen (p (fm-parent self))
           (fm-find-registered id p must-find?)))
     (when (and must-find? (not must-find?-supplied?))
-      (error "fm-find-registered failed seeking ~a starting search at node ~a" id self))))
+      (loop for k being the hash-keys of (registry (fm-ascendant-if self 'registry?))
+            do (print `(registered ,k)))
+      (error "fm-find-registered failed seeking ~a starting search at node ~a registry ~a" id self
+        (fm-ascendant-if self 'registry?)))))
 
 (export! rg? rg! fm-dump-lineage)
 
@@ -264,7 +274,9 @@
   `(fm-find-registered ,id self nil))
 
 (defmacro rg! (id)
-  `(fm-find-registered ,id self))
+  (if (eq id :coach)
+      `(fm-other :coach)
+    `(fm-find-registered ,id self)))
 
 (defun fm-dump-lineage (self tag)
   (when self

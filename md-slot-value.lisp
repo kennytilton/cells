@@ -199,7 +199,7 @@ See the Lisp Lesser GNU Public License for more details.
                      for n below (length *call-stack*)
                      do (trc "caller> " caller #+shhh (cr-code caller))
                        when (eq caller c) do (loop-finish))))
-             (setf *stop* t)  
+             (c-stop :cell-midst-askers)  
              (c-break ;; break is problem when testing cells on some CLs
               "cell ~a midst askers (see above)" c)
              (error 'asker-midst-askers :cell c))
