@@ -235,7 +235,7 @@
   (assert self () "fm-register: nil self registering ~a" guest)
   (if (registry? self)
       (progn
-        (trc "fm-registering" (md-name guest) guest :with self)
+        ;(trc "fm-registering" (md-name guest) guest :with self)
         (assert (registry self) () "fm-register no reg ~a" self)
         (setf (gethash (md-name guest) (registry self)) guest))
     (fm-register (fm-parent self) guest)))
@@ -245,7 +245,7 @@
   (if (registry? self)
       (progn
         (assert (registry self) () "fm-check-out no reg ~a" self)
-        (trc "removing registered" (md-name guest) :from self)
+        ;; (trc "removing registered" (md-name guest) :from self)
         (remhash (md-name guest) (registry self)))
     (bif (p (fm-parent self))
       (fm-check-out p guest)

@@ -275,7 +275,6 @@
                     (pushnew (list c prior-value prior-value?) *the-unpropagated*))))
       (finally (lambda (cs)
                  (print `(finally sees ,*data-pulse-id* ,cs))
-                 ;(trace c-propagate ensure-value-is-current)
                  (loop for (c prior-value prior-value?) in (nreverse cs) do
                        (c-propagate c prior-value prior-value?)))))
   (assert (not *one-pulse?*))
