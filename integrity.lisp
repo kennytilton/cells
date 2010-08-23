@@ -9,11 +9,13 @@
 
 (in-package :cells)
 
+
 (define-constant *ufb-opcodes* '(:tell-dependents
                                  :awaken
                                  :client
                                  :ephemeral-reset
-                                 :change))
+                                 :change
+                                 :post-change))
 
 (defmacro with-integrity ((&optional opcode defer-info debug) &rest body)
   (declare (ignorable debug))

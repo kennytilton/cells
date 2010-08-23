@@ -140,10 +140,13 @@ a cellular slot (or in a list in such) and then mop those up on not-to-be.
 
 #+xx
 (cells-reset)
+
+(defparameter *c-stopper* 'c-stopper)
+
 (defun c-stop (&optional why)
   (funcall *c-stopper* why))
 
-(defparameter *c-stopper* 'c-stopper)
+
 
 (defun c-stopper (why)
   (setf *stop* t)
