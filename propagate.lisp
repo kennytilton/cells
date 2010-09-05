@@ -121,7 +121,7 @@
     (trc nil "c.propagate observing" c)
 
 
-    (when (or (> *data-pulse-id* (c-pulse-observed c)) ;; breaks algebra 
+    (when (or (> *data-pulse-id* (c-pulse-observed c))
             (find (c-lazy c) '(:once-asked :always t))) ;; messy: these can get setfed/propagated twice in one pulse
       
       ;;;  check this with its-alive off and see if we should check here for pulse already done
@@ -129,8 +129,9 @@
       (b-if flushed (md-slot-cell-flushed (c-model c) (c-slot-name c))
         (setf (flushed-cell-pulse-observed flushed) *data-pulse-id*)
         (setf (c-pulse-observed c) *data-pulse-id*))
-      (slot-value-observe (c-slot-name c) (c-model c)
-        (c-value c) prior-value prior-value-supplied c))
+      (let ((*observe-why* :propagate))
+        (slot-value-observe (c-slot-name c) (c-model c)
+          (c-value c) prior-value prior-value-supplied c)))
     
     
     ;

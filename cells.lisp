@@ -43,6 +43,7 @@ a cellular slot (or in a list in such) and then mop those up on not-to-be.
 
 (defparameter *md-awake* nil)
 (defparameter *md-awake-where* :anon)
+(defparameter *ntb-dbg* nil)
 
 (defun md-awake-ct ()
   (if *md-awake* (hash-table-count *md-awake*) 0))
@@ -128,6 +129,7 @@ a cellular slot (or in a list in such) and then mop those up on not-to-be.
    *c-debug* debug
    *c-prop-depth* 0
    *not-to-be* nil
+   *ntb-dbg* nil
    *data-pulse-id* 0
    *finbiz-id* 0
    *defer-changes* nil ;; should not be necessary, but cannot be wrong
@@ -203,6 +205,8 @@ a cellular slot (or in a list in such) and then mop those up on not-to-be.
 
 (define-condition unbound-cell (unbound-slot)
   ((cell :initarg :cell :reader cell :initform nil)))
+
+(defparameter *observe-why* nil) ;; debug aid
 
 (defgeneric slot-value-observe (slotname self new old old-boundp cell)
   #-(or cormanlisp)

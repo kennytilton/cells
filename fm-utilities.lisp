@@ -342,6 +342,13 @@
 ;; should be modified to go through 'gather', which should be the real fm-find-all
 ;;
 
+(export! fm-heritage)
+
+(defun fm-heritage (self)
+  (loop for p = self then (fm-parent p)
+        while p
+        collect p))
+
 (defun fm-do-up (self &optional (fn 'identity))
   (when self
     (funcall fn self)

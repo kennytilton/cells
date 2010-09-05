@@ -160,7 +160,8 @@
                 (trc "reobserving flushed" flushed))
               (when flushed
                 (setf (flushed-cell-pulse-observed flushed) *data-pulse-id*)) ;; probably unnecessary
-              (slot-value-observe slot-name self (bd-slot-value self slot-name) nil nil flushed))))
+              (let ((*observe-why* :flush))
+                (slot-value-observe slot-name self (bd-slot-value self slot-name) nil nil flushed)))))
 
          ((find (c-lazy c) '(:until-asked :always t))
           (trc nil "md-awaken deferring c-awaken since lazy" 

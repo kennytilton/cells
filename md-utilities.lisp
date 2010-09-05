@@ -30,7 +30,7 @@
     (declare (ignore self))
     nil))
 
-(defparameter *ntb-dbg* nil)
+
 
 (export! *ntb-dbg*)
 
