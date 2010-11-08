@@ -1,4 +1,4 @@
-;; -*- lisp-version: "8.2 [64-bit Windows] (Jan 25, 2010 15:11)"; cg: "1.134"; -*-
+;; -*- lisp-version: "8.2 [64-bit Windows] (Oct 27, 2010 5:12)"; cg: "1.134"; -*-
 
 (in-package :cg-user)
 
@@ -27,7 +27,7 @@
                  (make-instance 'module :name "test-propagation.lisp")
                  (make-instance 'module :name "test-cc.lisp"))
   :projects (list (make-instance 'project-module :name "../utils-kt/utils-kt"
-                                 :show-modules t))
+                                 :show-modules nil))
   :libraries nil
   :editable-files nil
   :distributed-files nil

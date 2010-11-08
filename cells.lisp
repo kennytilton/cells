@@ -79,7 +79,7 @@ a cellular slot (or in a list in such) and then mop those up on not-to-be.
   `(call-with-none-awake ,dbg (lambda () ,@body) ,diag))
 
 (defun call-with-none-awake (dbg-info fn diag)
-  (let ((*md-awake* (make-hash-table :test 'eq :weak-keys t)))
+  (let ((*md-awake* (make-hash-table :test 'eq #-sbcl :weak-keys #-sbcl t)))
     (prog1
         (funcall fn)
       (when (md-awakep)
