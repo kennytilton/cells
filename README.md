@@ -1,4 +1,5 @@
-# cells -- spreadsheet-like expressiveness for CLOS, the Common Lisp Object System.
+# cells
+## Spreadsheet-like expressiveness for CLOS, the Common Lisp Object System.
 
 Please check out the Wiki for motivation and general overview.
 
