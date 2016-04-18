@@ -1,4 +1,4 @@
-;; (See defpackage.lisp for license and copyright notigification)
+;; 
 
 (in-package :cells)
 

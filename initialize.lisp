@@ -5,7 +5,7 @@
 
 Copyright (C) 1995, 2006 by Kenneth Tilton
 
-(See defpackage.lisp for license and copyright notigification)
+
 
 |#
 

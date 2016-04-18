@@ -1,4 +1,4 @@
-;; (See defpackage.lisp for license and copyright notigification)
+;; 
 
 (in-package :cells)
 
@@ -34,9 +34,34 @@
                 )))
     (trcx cool 42)
     (setf (tcc-a self) 42)
-    (assert (and (numberp (tcc-2a self))
-              (= (tcc-2a self) 84)))))
+    (assert (eql (tcc-2a self) 84))))
 
 #+test
 (test-with-cc)
 
+(defmd ccproc () ccp obs drv)
+
+(defobserver ccp ()
+  (trcx obs-cpp new-value old-value)
+  (with-cc :obs-cpp
+    (setf (^obs) (+ (* 10 (^drv)) new-value))))
+
+(dbgobserver obs)
+
+(defun test-ccproc ()
+  (cells-reset)
+  (let ((x (make-instance 'ccproc
+             :ccp (c-in 0)
+             :obs (c-in 0)
+             :drv (c? (+ 10 (^ccp))))))
+    (trcx see-0-10 100 (ccp x)(drv x)(obs x))
+
+    (setf (ccp x) 1)
+    (trcx see-1-11-101 (ccp x)(drv x)(obs x))
+
+    (trcx now-see-1-11-101 (ccp x)(drv x)(obs x))
+    (setf (ccp x) 2)
+
+    (trcx see-2-12-102 (ccp x)(drv x)(obs x))
+    (trcx see-2-12-102 (ccp x)(drv x)(obs x))))
+    

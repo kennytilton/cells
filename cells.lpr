@@ -2,7 +2,7 @@
 
 (in-package :cg-user)
 
-(defpackage :cells)
+(defpackage :utils-kt)
 
 (define-project :name :cells
   :modules (list (make-instance 'module :name "defpackage.lisp")
@@ -23,13 +23,11 @@
                  (make-instance 'module :name "md-utilities.lisp")
                  (make-instance 'module :name "family.lisp")
                  (make-instance 'module :name "fm-utilities.lisp")
-                 (make-instance 'module :name "family-values.lisp")
-                 (make-instance 'module :name "test-propagation.lisp")
-                 (make-instance 'module :name "test-cc.lisp"))
+                 (make-instance 'module :name "family-values.lisp"))
   :projects (list (make-instance 'project-module :name "../utils-kt/utils-kt"
                                  :show-modules nil))
   :libraries nil
-  :editable-files nil
+  :editable-files (list "cells.asd")
   :distributed-files nil
   :internally-loaded-files nil
   :project-package-name :cells
@@ -53,7 +51,7 @@
   :build-number 0
   :run-with-console nil
   :project-file-version-info nil
-  :on-initialization 'cells::test-with-cc
+  :on-initialization 'utils-kt::cz-count
   :default-error-handler-for-delivery 'report-unexpected-error-and-exit
   :on-restart 'do-default-restart)
 

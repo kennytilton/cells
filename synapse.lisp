@@ -1,9 +1,9 @@
-;; -*- mode: Lisp; Syntax: Common-Lisp; Package: cells; -*-
+﻿;; -*- mode: Lisp; Syntax: Common-Lisp; Package: cells; -*-
 #|
 
     Cells -- Automatic Dataflow Managememnt
 
-(See defpackage.lisp for license and copyright notigification)
+
 
 |#
 
@@ -21,7 +21,7 @@
                                 (make-c-dependent
                                  :model (c-model *depender*)
                                  :slot-name ,syn-id
-                                 :code ',body
+                                 :code #+live nil #-live ',body
                                  :synaptic t
                                  :rule (c-lambda ,@body)))))
                          (record-caller new-syn)

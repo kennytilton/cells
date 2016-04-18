@@ -1,17 +1,17 @@
-;; -*- mode: Lisp; Syntax: Common-Lisp; Package: cells; -*-
+﻿;; -*- mode: Lisp; Syntax: Common-Lisp; Package: cells; -*-
 #|
 
     Cells -- Automatic Dataflow Managememnt
 
-(See defpackage.lisp for license and copyright notigification)
+
 
 |#
 
 (in-package :cells)
 
 (eval-when (:compile-toplevel :execute :load-toplevel)
-  (export '(model value family dbg .pa
-             kids kid1 ^k1 kid2 ^k2 last-kid ^k-last perishable)))
+  (export '(model value family dbg .pa par
+             kids kid1 .kid1 kid2 .kid2 last-kid ^k-last perishable)))
 
 (defmodel model ()
   ((.md-name :cell nil :initform nil :initarg :md-name :accessor md-name)
@@ -20,6 +20,25 @@
    (.value :initform nil :accessor value :initarg :value)
    (register? :cell nil :initform nil :initarg :register? :reader register?)
    (zdbg :initform nil :accessor dbg :initarg :dbg)))
+
+(define-symbol-macro .parent (fm-parent self))
+(define-symbol-macro .pa (fm-parent self))
+
+
+(defmethod md-awaken :around ((self model))
+  (when (eq :eternal-rest (md-state .pa))
+    (trcx not-awakening-child-of-dead!!!!!!!!!! self .pa)
+    (setf (md-state self) :eternal-rest)
+    (return-from md-awaken self))
+  (call-next-method)
+  self)
+
+(defun zwibble ()
+  (error "value invoked on nil"))
+
+(defmethod value ((nada null))
+  ;; looking for tighter backtrace than method-not-found
+  (zwibble))
 
 (defmethod md-finalize ((self model))
   ;;.bgo
@@ -51,17 +70,15 @@
   (format s "~a~a" (if (mdead self) "DEAD!" "")
     (or (md-name self) (type-of self))))
 
-(define-symbol-macro .parent (fm-parent self))
-(define-symbol-macro .pa (fm-parent self))
-
 (defmethod md-name (other)
   (trc "yep other md-name" other (type-of other))
   other)
 
 (defmethod md-name ((nada null))
   (unless (c-stopped)
+    (error "md-name called on nil")
     (c-stop :md-name-on-null)
-    (break "md-name called on nil")))
+    (brk "md-name called on nil")))
 
 (defmethod md-name ((sym symbol)) sym)
 
@@ -74,7 +91,8 @@
     (unless (md-name self)
       ; lotsa symbols over time in a web app
       ;(setf (md-name self) (gentemp (string (c-class-name (class-of self)))))
-      (setf (md-name self) (gensym (string (c-class-name (class-of self)))))
+      (setf (md-name self) #+live (type-of self)
+        #-live (gensym (string (c-class-name (class-of self)))))
       ))
  
   (when (and (slot-boundp self '.fm-parent)
@@ -108,7 +126,11 @@
      :initform nil
      :accessor registry)))
 
-(export! registry?)
+(export! registry? )
+
+(defmethod not-to-be :after ((self family)) ;; hhhhack working on GC
+  (when (typep (registry self) 'hash-table)
+    (clrhash (registry self))))
 
 #+test
 (let ((c (find-class 'family)))
@@ -119,7 +141,13 @@
   `(let ((*parent* self))
      (packed-flat! ,@kids)))
 
+(defmacro c?kids (&rest kids)
+  `(c? (the-kids ,@kids)))
+
+(export! c?kids .siblings)
+
 (defmacro s-sib-no () `(position self (kids .parent)))
+(define-symbol-macro .siblings (kids (fm-parent self)))
 
 (defmacro gpar ()
   `(fm-grandparent self))
@@ -131,13 +159,15 @@
 
 (defun kid1 (self) (car (kids self)))
 
-(export! first-born-p)
 (defun first-born-p (self)
   (eq self (kid1 .parent)))
+(define-symbol-macro .kid1p (first-born-p self))
+
+(export! first-born-p .kid1p)
 
 (defun kid2 (self) (cadr (kids self)))
-(defmacro ^k1 () `(kid1 self))
-(defmacro ^k2 () `(kid2 self))
+(define-symbol-macro .kid1 (kid1 self))
+(define-symbol-macro .kid2 (kid2 self))
 
 (defun last-kid (self) (last1 (kids self)))
 (defmacro ^k-last () `(last-kid self))
@@ -154,15 +184,15 @@
     `(bwhen (,self ,self-form)
         (cadr (member ,self (kids (fm-parent ,self)))))))
 
-(defun prior-sib (self)
-   (let ((kid (gensym)))
-      `(let ((,kid ,self))
-          (find-prior ,kid (kids (fm-parent ,kid))))))
+(define-symbol-macro .psib (psib))
+(define-symbol-macro .nsib (nsib))
+
+(export! .psib .nsib)
 
 (defun md-be-adopted (self &aux (fm-parent (fm-parent self)) (selftype (type-of self))) 
   (c-assert self)
   (c-assert fm-parent)
-  (c-assert (typep fm-parent 'family))
+  (c-assert (typep fm-parent 'family) () "fm-parent ~a offered for kid ~a not a family" fm-parent self)
   
   (trc nil "md be adopted >" :kid self (adopt-ct self) :by fm-parent)
   
@@ -187,15 +217,24 @@
                 (trc nil "md-install-cell " slot-name c-or-value)
                 (md-install-cell self slot-name c-or-value)))))))))
 
-(defobserver .kids ((self family) new-kids old-kids)
+(defobserver .kids :around ((self family) new-kids old-kids)
+  
   (c-assert (listp new-kids) () "New kids value for ~a not listp: ~a ~a" self (type-of new-kids) new-kids)
   (c-assert (listp old-kids))
   (c-assert (not (member nil old-kids)))
   (c-assert (not (member nil new-kids)))
-  (bwhen (sample (find-if-not 'fm-parent new-kids))
-      (c-break "New as of Cells3: parent must be supplied to make-instance of ~a kid ~a"
-        (type-of sample) sample))
-  (trc nil ".kids output > entry" new-kids (mapcar 'fm-parent new-kids)))
+
+  (loop for newk in new-kids
+        unless (typep newk 'model)
+        do (break "family-kids-obs> non-model ~s typed ~s offered as kid to family ~a"
+             newk (type-of newk) self))
+
+  (loop for newk in new-kids
+      unless (fm-parent newk)
+      do (break "New as of Cells3: parent ~s must be supplied to make-instance of ~s/~s"
+           self newk (type-of newk)))
+
+  (call-next-method))
 
 (defmethod kids ((other model-object))  nil)
 
@@ -235,7 +274,7 @@
   (assert self () "fm-register: nil self registering ~a" guest)
   (if (registry? self)
       (progn
-        ;(trc "fm-registering" (md-name guest) guest :with self)
+        (trc nil "fm-registering!!!!!!!!!!" (md-name guest) guest :with self)
         (assert (registry self) () "fm-register no reg ~a" self)
         (setf (gethash (md-name guest) (registry self)) guest))
     (fm-register (fm-parent self) guest)))
@@ -249,7 +288,7 @@
         (remhash (md-name guest) (registry self)))
     (bif (p (fm-parent self))
       (fm-check-out p guest)
-      (break "oops ~a ~a ~a" self (fm-parent self) (slot-value self '.fm-parent)))))
+      (brk "oops ~a ~a ~a" self (fm-parent self) (slot-value self '.fm-parent)))))
 
 (defmethod fm-find-registered (id self &optional (must-find? self  must-find?-supplied?))
   (or (if (registry? self)
@@ -274,14 +313,16 @@
   `(fm-find-registered ,id self nil))
 
 (defmacro rg! (id)
-  (if (eq id :coach)
-      `(fm-other :coach)
+  (if (find id '(:buddy :coach))
+      `(fm-other? ,id)
     `(fm-find-registered ,id self)))
 
-(defun fm-dump-lineage (self tag)
+(defun fm-dump-lineage (self tag &optional (s t))
   (when self
-    (print (list tag self))
-    (fm-dump-lineage .pa tag)))
+    (print (list tag self
+             (when (typep self 'model)
+               (md-state self)) s))
+    (fm-dump-lineage .pa tag)) s)
       
 
 

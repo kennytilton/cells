@@ -1,9 +1,9 @@
-;; -*- mode: Lisp; Syntax: Common-Lisp; Package: cells; -*-
+﻿;; -*- mode: Lisp; Syntax: Common-Lisp; Package: cells; -*-
 #|
 
     Cells -- Automatic Dataflow Managememnt
 
-(See defpackage.lisp for license and copyright notigification)
+
 
 |#
 
@@ -64,7 +64,8 @@
           (call-next-method)
         (progn
           (c-print-value c stream)
-          (format stream "<~d:~a ~a/~a = ~a>"
+          (format stream "<~a ~d:~a ~a/~a = ~a>"
+            (type-of c)
             (c-pulse c)
             (subseq (string (c-state c)) 0 1)
             (symbol-name (or (c-slot-name c) :anoncell))
@@ -85,6 +86,9 @@
 (defun c-callers (c)
   "Make it easier to change implementation"
   (fifo-data (c-caller-store c)))
+
+(defun c-callers-clear (c)
+  (setf (c-caller-store c) nil))
 
 (defun caller-ensure (used new-caller)
   (unless (find new-caller (c-callers used))
@@ -147,8 +151,16 @@
   (usage (blank-usage-mask)))
 
 (defun blank-usage-mask ()
-  (make-array 16 :element-type 'bit
+  (make-array 64 :element-type 'bit
     :initial-element 0))
+
+#+xxxx
+(cd-usage nil)
+#+xxx
+(test-xxx)
+(defun test-xxx ()
+  (let ((u (blank-usage-mask)))
+    (setf (sbit u 25) 1)))
 
 (defstruct (c-drifter
             (:include c-dependent)))

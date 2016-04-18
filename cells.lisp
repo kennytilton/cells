@@ -1,21 +1,20 @@
-;; -*- mode: Lisp; Syntax: Common-Lisp; Package: cells; -*-
+﻿;; -*- mode: Lisp; Syntax: Common-Lisp; Package: cells; -*-
 #|
 
     Cells -- Automatic Dataflow Managememnt
 
-(See defpackage.lisp for license and copyright notigification)
+
 
 |#
 
 #| Notes
 
-I don't like the way with-cc defers twice, first the whole thing and then when the
+WRONG: "I don't like the way with-cc defers twice, first the whole thing and then when the
 body finally runs we are still within the original integrity and each setf gets queued
-to UFB separately before md-slot-value-assume finally runs. I think all that is going on here 
-is that we want the programmer to use with-cc to show they know the setf will not be returning
-a useful value. But since they have coded the with-cc we should be able to figure out a way to
-let those SETFs thru as if they were outside integrity, and then we get a little less UFBing
-but even better SETF behaves as it should.
+to UFB separately before md-slot-value-assume finally runs." That is a feature so setfs 
+wrapped by with-cc in observers do not run until the current datapulse finishes 
+the observer pass. When I defeated this the setf ran and its observer pass finished before the one that 
+dispatched it.
 
 It would be nice to do referential integrity and notice any time a model object gets stored in
 a cellular slot (or in a list in such) and then mop those up on not-to-be.
@@ -23,6 +22,78 @@ a cellular slot (or in a list in such) and then mop those up on not-to-be.
 |#
 
 (in-package :cells)
+
+(defvar *c-md* (make-hash-table :weak-keys t))
+(defvar *c-c* (make-hash-table :weak-keys t))
+
+(defun c-md-init ()
+  (setf *c-c* (make-hash-table :weak-keys t))
+  (setf *c-md* (make-hash-table :weak-keys t)))
+
+(defun c-md-record (it)
+  (print `(recording!!!!!!!!!! ,(type-of it)))
+  (setf (gethash it *c-md*) (type-of it)))
+
+(defun c-md? ()
+  (unless *c-md* (return-from c-md?))
+  (print `(c-md-dump-objs ,(hash-table-count *c-md*)))
+  (loop with tct = (make-hash-table :test 'eq)
+      and statect = (make-hash-table :test 'eq)
+        and md-ct = 0 and aw-ct = 0 and pa-ct = 0 and mx-ct = 0
+      for type being the hash-values of *c-md*
+      using (hash-key md)
+      for n upfrom 0
+      when (fm-parent md) do (incf pa-ct)
+      when (eq (md-state md) :awake) do (print `(:awake ,md))(incf aw-ct)
+      ;;when (string-equal type "ta-session") do (inspect md)
+      ;; when (and (eq (md-state md) :awake) (typep md 'mathx::math-expression)) do (incf mx-ct)
+      do (incf md-ct)
+        (incf (gethash type tct 0))
+        (incf (gethash (md-state md) statect 0))
+      finally (let ((typ-ct (hash-table-count tct)))
+                (maphash (lambda (k v)
+                           (print `(its ,k ,v))) tct)
+                (print `(type-ct-tot ,typ-ct :md-ct ,md-ct :aw-ct ,aw-ct :pa-ct ,pa-ct
+                          :mx-ct ,mx-ct)))
+        (maphash (lambda (k v)
+                   (print `(state ,k ,v))) statect)))
+
+(defun c-md-drop (type)
+  (when *c-md*
+    (loop for md being the hash-keys of *c-md*
+        when (typep md type) do (print `(:remming ,md))
+          (remhash md *c-md*))))
+
+#|
+(gc t)
+(loop for type being the hash-values of *c-md*
+    using (hash-key md)
+    when (and (typep md 'cz::model-object)
+           (eq (cz::md-state md) :awake))
+    do (print `(zap ,md ,type))
+      (not-to-be md))
+(c-md?)
+|#
+
+(defun cmd-find ()
+  (print '------------------------------------)
+  (loop for sym being the symbols of :mathx
+        for v = (when (and (boundp sym)
+                         (intersection '("mathx" "qxl" "cz")
+                          (package-nicknames
+                           (symbol-package sym))
+                          :test 'string-equal))
+                  (symbol-value sym))
+        unless (typep v '(or null string fixnum pathname single-float symbol
+                           character simple-array))
+        do (print (list sym (package-nicknames
+                             (symbol-package sym))
+                    (type-of v)
+                    (typecase v
+                      (hash-table (hash-table-count v))
+                      (cons (length v)))))))
+        
+(export! c-md-init c-md-record c-md? cmd-find)
 
 (defparameter *c-prop-depth* 0)
 (defparameter *causation* nil)
@@ -34,6 +105,7 @@ a cellular slot (or in a list in such) and then mop those up on not-to-be.
 
 (export! .dpid .fbid)
 (defparameter *c-debug* nil)
+(defparameter *c-prop-dep-trace* nil)
 (defparameter *defer-changes* nil)
 (defparameter *within-integrity* nil)
 (defvar *istack*)
@@ -58,19 +130,19 @@ a cellular slot (or in a list in such) and then mop those up on not-to-be.
         (loop for c2 in (c-useds c)
             do 
               (explore-used c2)))
-  .bgo)
+  (bgo 'check-links))
 
 (defun explore-caller (c)
   (unless (gethash (c-model c) *md-awake*)
     (print `(:caller-outside? ,c))
-    .bgo)
+    (bgo 'explore-caller))
   (loop for u in (c-callers c)
       do (explore-caller u)))
 
 (defun explore-used (c)
   (unless (gethash (c-model c) *md-awake*)
     (print `(:used-outside? ,c))
-    .bgo)
+    (bgo 'explore-used))
   (loop for u in (c-useds c)
       do (explore-used u)))
 
@@ -88,7 +160,7 @@ a cellular slot (or in a list in such) and then mop those up on not-to-be.
           (progn
             (print dbg-info)
             (md-awake-dump)))
-        (break "some awake ~a" dbg-info)))))
+        (brk "some awake ~a" dbg-info)))))
 
 (defun md-awake-record (self &optional (where *md-awake-where*))
   (when *md-awake*
@@ -127,6 +199,7 @@ a cellular slot (or in a list in such) and then mop those up on not-to-be.
   (utils-kt-reset)
   (setf 
    *c-debug* debug
+   *c-prop-dep-trace* nil
    *c-prop-depth* 0
    *not-to-be* nil
    *ntb-dbg* nil
@@ -137,7 +210,7 @@ a cellular slot (or in a list in such) and then mop those up on not-to-be.
    *within-integrity* nil
    *unfinished-business* nil
    *trcdepth* 0)
-  #-its-alive! (md-census-start)
+  #-live (md-census-start)
   (trc nil "------ cell reset ----------------------------"))
 
 #+xx
@@ -151,7 +224,7 @@ a cellular slot (or in a list in such) and then mop those up on not-to-be.
 
 
 (defun c-stopper (why)
-  (setf *stop* t)
+  (setf *stop* t) ;; in webserver, make sure each thread binds this freshly
   (print `(c-stop-entry ,why))
   (format t "~&C-STOP> stopping because ~a" why)  )
 
@@ -171,12 +244,21 @@ a cellular slot (or in a list in such) and then mop those up on not-to-be.
 
 (defmacro c-assert (assertion &optional places fmt$ &rest fmt-args)
   (declare (ignorable assertion places fmt$ fmt-args))
-   #+(or)`(progn) 
+  #+live `(progn) 
+  #-live `(unless *stop*
+            (unless ,assertion
+              ,(if fmt$
+                   `(c-break ,fmt$ ,@fmt-args)
+                 `(c-break "failed assertion: ~a" ',assertion)))))
+
+(defmacro c-warn? (assertion &optional places fmt$ &rest fmt-args)
+  (declare (ignorable assertion places fmt$ fmt-args))
+  #+(or)`(progn) 
   `(unless *stop*
      (unless ,assertion
        ,(if fmt$
-            `(c-break ,fmt$ ,@fmt-args)
-          `(c-break "failed assertion: ~a" ',assertion)))))
+            `(c-warn ,fmt$ ,@fmt-args)
+          `(c-warn "failed assertion: ~a" ',assertion)))))
 
 (defvar *call-stack* nil)
 (defvar *depender* nil)
@@ -195,10 +277,16 @@ a cellular slot (or in a list in such) and then mop those up on not-to-be.
           `t))))
 
 (defmacro without-c-dependency (&body body)
-  ` (let (*depender*)
+  `(let (*depender*)
       ,@body))
 
-(export! .cause)
+(defmacro with-c-dependency-if ((if) &body body)
+  `(if ,if
+       (progn ,body)
+     (let (*depender*)
+       ,@body)))
+
+(export! .cause with-c-dependency-if)
 
 (define-symbol-macro .cause
     (car *causation*))
@@ -236,7 +324,7 @@ a cellular slot (or in a list in such) and then mop those up on not-to-be.
     (cell :initarg :cell :reader cell))
    (:report (lambda (condition stream)
                  (format stream "~&unhandled <c-enabling>: ~s" condition)
-                 (break "~&i say, unhandled <c-enabling>: ~s" condition))))
+                 (brk "~&i say, unhandled <c-enabling>: ~s" condition))))
 
 (define-condition c-fatal (xcell)
    ((name :initform :anon :initarg :name :reader name)
@@ -267,3 +355,12 @@ a cellular slot (or in a list in such) and then mop those up on not-to-be.
       (c-stop :c-break)
       ;(format t "~&c-break > stopping > ~{~a ~}" args2)
       (apply 'error args2))))
+
+(defun c-warn (&rest args)
+  (unless *stop*
+    (let ((*print-level* 5)
+          (*print-circle* t)
+          (args2 (mapcar 'princ-to-string args)))
+      
+      ;(format t "~&c-break > stopping > ~{~a ~}" args2)
+      (apply 'warn args2))))

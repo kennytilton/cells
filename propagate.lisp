@@ -1,9 +1,9 @@
-;; -*- mode: Lisp; Syntax: Common-Lisp; Package: cells; -*-
+﻿;; -*- mode: Lisp; Syntax: Common-Lisp; Package: cells; -*-
 #|
 
     Cells -- Automatic Dataflow Managememnt
 
-(See defpackage.lisp for license and copyright notigification)
+
 
 |#
 
@@ -29,21 +29,30 @@
 
 (defparameter *one-pulse?* nil)
 
+(defparameter *data-pulse-lock* (mp:make-process-lock))
+(defparameter *dp-log* nil)
+
+
 (defun data-pulse-next (pulse-info)
   (declare (ignorable pulse-info))
   (unless *one-pulse?*
-    ;(trc "dp-next> " (1+ *data-pulse-id*) pulse-info)
-    #+chill (when *c-debug*
-      (push (list :data-pulse-next pulse-info) *istack*))
-    (incf *data-pulse-id*)))
+    (mp:with-process-lock (*data-pulse-lock*)
+      #+xxxxx (when *dp-log*
+        (trc "dp-next> " (1+ *data-pulse-id*) pulse-info))
+      #+chill (when *c-debug*
+                (push (list :data-pulse-next pulse-info) *istack*))
+      (incf *data-pulse-id*))))
 
 (defun c-currentp (c)
-  (eql (c-pulse c) *data-pulse-id*))
+  (= (c-pulse c) *data-pulse-id*)) ;;; hhack = was eql
 
 (defun c-pulse-update (c key)
   (declare (ignorable key))
+  #+hunh?
   (unless (find key '(:valid-uninfluenced))
     (trc nil "!!!!!!! c-pulse-update updating !!!!!!!!!!" *data-pulse-id* c key :prior-pulse (c-pulse c)))
+  (unless (>= *data-pulse-id* (c-pulse c))
+    (describe c))
   (assert (>= *data-pulse-id* (c-pulse c)) ()
     "Current DP ~a not GE pulse ~a of cell ~a" *data-pulse-id* (c-pulse c) c)
   (setf (c-pulse c) *data-pulse-id*))
@@ -54,7 +63,7 @@
 
 (defparameter *per-cell-handler* nil)
 
-(defun c-propagate (c prior-value prior-value-supplied)
+(defun c-propagate (c prior-value prior-value-supplied &optional (callers (c-callers c)))
   (when *one-pulse?*
     (when *per-cell-handler*
       (funcall *per-cell-handler* c prior-value prior-value-supplied)
@@ -63,8 +72,6 @@
   (count-it :cpropagate)
   (setf (c-pulse-last-changed c) *data-pulse-id*)
           
-  (when prior-value
-    (assert prior-value-supplied () "How can prior-value-supplied be nil if prior-value is not?!! ~a" c))
   (let (*depender* *call-stack* ;; I think both need clearing, cuz we are neither depending nor calling when we prop to callers
         (*c-prop-depth*  (1+ *c-prop-depth*))
         (*defer-changes* t))
@@ -92,20 +99,12 @@
     ; pb to decide its own pt), the doomed kid will still have a parent but not be in its kids slot
     ; when it goes looking for a sibling relative to its position.
     ;
-    (when (and prior-value-supplied
-            prior-value
+    (when (and prior-value
             (md-slot-owning? (type-of (c-model c)) (c-slot-name c)))
       (trc nil "c.propagate> contemplating lost" (qci c))
-      (flet ((listify (x) (if (listp x) x (list x))))
-        (bif (lost (set-difference (listify prior-value) (listify (c-value c))))
-          (progn
-            (trc nil "prop nailing owned!!!!!!!!!!!" (qci c) :lost (length lost)) ;; :leaving (c-value c))
-            (loop for l in lost
-                  when (numberp l)
-                do (break "got num ~a" (list l (type-of (c-model c))(c-slot-name c)
-                                         (md-slot-owning? (type-of (c-model c)) (c-slot-name c)))))
-            (mapcar 'not-to-be lost))
-          (trc nil "no owned lost!!!!!"))))
+      (b-when lost (#-bammd set-difference #+bammd stable-set-difference (list! prior-value) (list! (c-value c)))
+        (trc nil "c-prop nailing lost owned!!!!!!!!!!!" (qci c) :lost (length lost))
+        (map nil 'not-to-be lost)))
     
     ; propagation to callers jumps back in front of client slot--value-observe handling in cells3
     ; because model adopting (once done by the kids change handler) can now be done in
@@ -116,7 +115,7 @@
     ; wants a rollback before starting with the side effects.
     ; 
     (progn ;; unless (member (c-lazy c) '(t :always :once-asked)) ;; 2006-09-26 still fuzzy on this 
-      (c-propagate-to-callers c))
+      (c-propagate-to-callers c callers))
     
     (trc nil "c.propagate observing" c)
 
@@ -185,6 +184,13 @@
                              (arg-name oldvarg)(arg-name oldvargboundp) (arg-name cell-arg)))))
              ,@output-body)))))
 
+(defmacro dbgobserver (slotname &optional params &body body)
+  `(defobserver ,slotname ,params
+     (trcx ,(conc$ 'obs- slotname) self (md-name self) new-value old-value old-value-boundp c)
+     ,@body))
+
+(export! dbgobserver)
+
 (defmacro bump-output-count (slotname) ;; pure test func
   `(if (get ',slotname :outputs)
        (incf (get ',slotname :outputs))
@@ -202,7 +208,8 @@
 
 (export! cll-outer cll-inner)
 
-(defun c-propagate-to-callers (c)
+
+(defun c-propagate-to-callers (c callers)
   ;
   ;  We must defer propagation to callers because of an edge case in which:
   ;    - X tells A to recalculate
@@ -217,48 +224,56 @@
   (when (find-if-not (lambda (caller)
                        (and (c-lazy caller) ;; slight optimization
                          (member (c-lazy caller) '(t :always :once-asked))))
-          (c-callers c))
+          callers)
     (let ((causation (cons c *causation*))) ;; in case deferred
-      #+slow (trc nil "c.propagate-to-callers > queueing notifying callers" (c-callers c))
+      #+slow (trc nil "c.propagate-to-callers > queueing notifying callers" callers)
       (with-integrity (:tell-dependents c)
         (assert (null *call-stack*))
         (assert (null *depender*))
         ;
         (if (mdead (c-model c))
-          (trc nil "WHOAA!!!! dead by time :tell-deps dispatched; bailing" c)
+            (trc nil "WHOAA!!!! dead by time :tell-deps dispatched; bailing" c)
           (let ((*causation* causation))
-          (trc nil "c.propagate-to-callers > actually notifying callers of" c (c-callers c))
-          #+c-debug (dolist (caller (c-callers c))
-                      (assert (find c (cd-useds caller)) () "test 1 failed ~a ~a" c caller))
-          #+c-debug (dolist (caller (copy-list (c-callers c))) ;; following code may modify c-callers list...
-                      (trc nil "PRE-prop-CHECK " c :caller caller (c-state caller) (c-lazy caller))
-                      (unless (or (eq (c-state caller) :quiesced) ;; ..so watch for quiesced
-                                (member (c-lazy caller) '(t :always :once-asked)))
-                        (assert (find c (cd-useds caller))() "Precheck Caller ~a of ~a does not have it as used" caller c)
-                        ))
-          (dolist (caller (c-callers c))
-            (trc nil "propagating to caller iterates" c :caller caller (c-state caller) (c-lazy caller))
-            (block do-a-caller
-              (unless (or (eq (c-state caller) :quiesced) ;; ..so watch for quiesced
-                        (member (c-lazy caller) '(t :always :once-asked)))
-                (unless (find c (cd-useds caller))
-                  (trc "WHOA!!!! Bailing on Known caller:" caller :does-not-in-its-used c)
-                  (return-from do-a-caller))
-                #+slow (trc nil "propagating to caller is used" c :caller caller (c-currentp c))
-                (let ((*trc-ensure* (trcp c)))
-                  ;
-                  ; we just calculate-and-set at the first level of dependency because
-                  ; we do not need to check the next level (as ensure-value-is-current does)
-                  ; because we already know /this/ notifying dependency has changed, so yeah,
-                  ; any first-level cell /has to/ recalculate. (As for ensuring other dependents
-                  ; of the first level guy are current, that happens automatically anyway JIT on
-                  ; any read.) This is a minor efficiency enhancement since ensure-value-is-current would
-                  ; very quickly decide it has to re-run, but maybe it makes the logic clearer.
-                  ;
-                  ;(ensure-value-is-current caller :prop-from c) <-- next was this, but see above change reason
-                  ;
-                  (unless (c-currentp caller) ; happens if I changed when caller used me in current pulse
-                    (calculate-and-set caller :propagate c))))))))))))
+            (trc nil "c.propagate-to-callers > actually notifying callers of" c callers)
+            #+c-debug (dolist (caller callers)
+                        (assert (find c (cd-useds caller)) () "test 1 failed ~a ~a" c caller))
+            #+c-debug (dolist (caller (copy-list callers)) ;; following code may modify c-callers list...
+                        (trc nil "PRE-prop-CHECK " c :caller caller (c-state caller) (c-lazy caller))
+                        (unless (or (eq (c-state caller) :quiesced) ;; ..so watch for quiesced
+                                  (member (c-lazy caller) '(t :always :once-asked)))
+                          (assert (find c (cd-useds caller))() "Precheck Caller ~a of ~a does not have it as used" caller c)
+                          ))
+            (dolist (caller callers)
+              (trc nil #+chill *c-prop-dep-trace* "propagating to caller iterates" c :caller caller (c-state caller) (c-lazy caller))
+              (block do-a-caller
+                (unless (or (eq (c-state caller) :quiesced) ;; ..so watch for quiesced
+                          (member (c-lazy caller) '(t :always :once-asked)))
+                  (unless (find c (cd-useds caller))
+                    (unless (c-optimized-away-p c) ;; c would have been removed from any c-useds
+                      #+shhh (progn
+                               (describe caller)
+                               (describe (c-model caller))
+                               (describe c))
+                      (cond 
+                       ((find caller (c-callers c))
+                        (trc "WHOA!!!! Bailing on Known caller:" caller :w/out-this-callee-in-its-used c))
+                       (t (trc nil "Bailing on caller lost during propagation:" caller :w/out-this-callee-in-its-used c)))
+                      (return-from do-a-caller)))
+                  #+slow (trc nil "propagating to caller is used" c :caller caller (c-currentp c))
+                  (let ((*trc-ensure* (trcp c)))
+                    ;
+                    ; we just calculate-and-set at the first level of dependency because
+                    ; we do not need to check the next level (as ensure-value-is-current does)
+                    ; because we already know /this/ notifying dependency has changed, so yeah,
+                    ; any first-level cell /has to/ recalculate. (As for ensuring other dependents
+                    ; of the first level guy are current, that happens automatically anyway JIT on
+                    ; any read.) This is a minor efficiency enhancement since ensure-value-is-current would
+                    ; very quickly decide it has to re-run, but maybe it makes the logic clearer.
+                    ;
+                    ;(ensure-value-is-current caller :prop-from c) <- next was this, but see above change reason
+                    ;
+                    (unless (c-currentp caller) ; happens if I changed when caller used me in current pulse
+                      (calculate-and-set caller :propagate c))))))))))))
 
 (defparameter *the-unpropagated* nil)
 

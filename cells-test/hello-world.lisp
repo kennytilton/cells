@@ -1,4 +1,4 @@
-;; -*- mode: Lisp; Syntax: Common-Lisp; Package: cells; -*-
+﻿;; -*- mode: Lisp; Syntax: Common-Lisp; Package: cells; -*-
 ;;;
 ;;;
 ;;; Copyright (c) 1995,2003 by Kenneth William Tilton.
@@ -56,6 +56,29 @@
     (setf (happen dell) :knock-knock)
     (setf (happen dell) :leave)
     (values)))
+
+(defmd comp2 ()
+  (happen (c-in nil))
+  (location (c? (case (^happen)
+                  (:leave :away)
+                  (:arrive :at-home)
+                  (t .cache)))))
+
+(defobserver happen ((self comp2))
+  (trx obs-happ new-value old-value)
+  (case new-value
+    (:sell (with-integrity (:change :obs-happen)
+             (print `(:obs-with-cc-dispatched ,*within-integrity*))
+             (setf (^location) 'home)))))
+
+(defun hw-simpler ()
+  (cells-reset)
+  (let* ((*c-debug* t)
+         (self (make-instance 'comp2
+                :location (c-in 'shop))))
+    (print :awake!!!!!!!!!!!!!)
+    (setf (^happen) :sell)
+    (trx end (^happen)(^location))))
 
 #+(or)
 (hello-world)
