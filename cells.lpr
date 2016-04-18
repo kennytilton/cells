@@ -25,7 +25,7 @@
                  (make-instance 'module :name "fm-utilities.lisp")
                  (make-instance 'module :name "family-values.lisp"))
   :projects (list (make-instance 'project-module :name "../utils-kt/utils-kt"
-                                 :show-modules nil))
+                                 :show-modules t))
   :libraries nil
   :editable-files (list "cells.asd")
   :distributed-files nil
