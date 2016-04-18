@@ -1,4 +1,4 @@
-;; -*- mode: Lisp; Syntax: Common-Lisp; Package: cells; -*-
+﻿;; -*- mode: Lisp; Syntax: Common-Lisp; Package: cells; -*-
 ;;;
 ;;;
 ;;; Copyright (c) 1995,2003 by Kenneth William Tilton.
@@ -35,16 +35,6 @@
             :initform (c? "name-ct" 
                           (incf *name-ct-calc*)
                           (length (names self))))))
-
-#+test
-(progn
-  (cells-reset)
-  (inspect
-   (make-instance 'person
-     :names '("speedy" "chill")
-     :pulse (c-in 60)
-     :speech (c? (car (names self)))
-     :thought (c? (when (< (pulse self) 100) (speech self))))))
 
 (defobserver names ((self person) new-names)
   (format t "~&you can call me ~a" new-names))
@@ -181,8 +171,9 @@
     ;;
     (ct-assert (null (md-slot-cell p 'speech)))
     (ct-assert (assoc 'speech (cells-flushed  p)))
-    (ct-assert (c-optimized-away-p (cdr (assoc 'speech (cells-flushed  p)))))
-    
+    #+its-alive! (ct-assert (numberp (cdr (assoc 'speech (cells-flushed  p)))))
+    #-its-alive! (ct-assert (c-optimized-away-p (cdr (assoc 'speech (cells-flushed  p)))))
+    ;;(inspect p)
     (ct-assert (not (c-optimized-away-p (md-slot-cell p 'thought)))) ;; pulse is variable, so cannot opti
     (ct-assert (eql 1 (length (cd-useds (md-slot-cell p 'thought))))) ;; but speech is opti, so only 1 used
     ))
@@ -217,9 +208,12 @@
                   :pulse (c? (trc "calculating pulse" self)
                            (length (names self)))))
          nil)
+     (asker-midst-askers (c)
+       (print `(:cool-asker-midst-askers-thrown! ,c)))
      (t (error)
         (describe  error)
-       (setf *stop* nil)
+       (setf *stop* t)
+       (break)
         t)))
   )
 ;;

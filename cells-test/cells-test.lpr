@@ -1,4 +1,4 @@
-;; -*- lisp-version: "8.2 [64-bit Linux (x86-64)] (Mar 3, 2010 14:34)"; cg: "1.134"; -*-
+;; -*- lisp-version: "10.0 [64-bit Windows *SMP*] (Mar 16, 2016 14:27)"; -*-
 
 (in-package :cg-user)
 
@@ -17,7 +17,7 @@
                  (make-instance 'module :name "test-ephemeral.lisp")
                  (make-instance 'module :name "test-synapse.lisp")
                  (make-instance 'module :name "deep-cells.lisp"))
-  :projects (list (make-instance 'project-module :name "../cells" :show-modules nil))
+  :projects (list (make-instance 'project-module :name "../cells" :show-modules t))
   :libraries nil
   :editable-files nil
   :distributed-files nil
@@ -25,6 +25,7 @@
   :project-package-name :cells
   :main-form nil
   :compilation-unit t
+  :concatenate-project-fasls nil
   :verbose nil
   :runtime-modules (list :cg-dde-utils :cg.base)
   :splash-file-module (make-instance 'build-module :name "")

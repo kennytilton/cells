@@ -1,8 +1,8 @@
-;; -*- lisp-version: "8.2 [64-bit Windows] (Oct 27, 2010 5:12)"; cg: "1.134"; -*-
+;; -*- lisp-version: "10.0 [64-bit Windows *SMP*] (Mar 16, 2016 14:27)"; -*-
 
 (in-package :cg-user)
 
-(defpackage :CELLS)
+(defpackage :cells)
 
 (define-project :name :cells
   :modules (list (make-instance 'module :name "defpackage.lisp")
@@ -35,6 +35,7 @@
   :project-package-name :cells
   :main-form nil
   :compilation-unit t
+  :concatenate-project-fasls nil
   :verbose nil
   :runtime-modules nil
   :splash-file-module (make-instance 'build-module :name "")

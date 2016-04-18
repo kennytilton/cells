@@ -1,4 +1,4 @@
-;; -*- mode: Lisp; Syntax: Common-Lisp; Package: cells; -*-
+﻿;; -*- mode: Lisp; Syntax: Common-Lisp; Package: cells; -*-
 #|
 
     Cells -- Automatic Dataflow Managememnt
@@ -81,7 +81,7 @@ See the Lisp Lesser GNU Public License for more details.
   (declare (ignorable debug-id ensurer))
   (count-it! :ensure.value-is-current)
   ;(trc "evic entry" (qci c))
-  (wtrcx (:on? nil) ("evic>" (qci c) debug-id (qci ensurer))
+  (progn ;; wtrcx (:on? nil) ("evic>" (qci c) debug-id (qci ensurer))
     ;(count-it! :ensure.value-is-current )
     #+chill 
     (when ensurer ; (trcp c)
@@ -186,13 +186,13 @@ See the Lisp Lesser GNU Public License for more details.
              (princ #\.)
              (return-from calculate-and-set))
 
-           #-its-alive!
+           ;; #-its-alive!
            (bwhen (x (find c *call-stack*)) ;; circularity
              (unless nil ;; *stop*
                (let ()
                  (print `(:circler ,c))
                  (print `(*call-stack* ,*call-stack*))
-                 (inspect c)
+                 ;;;(inspect c)
                  (trc "calculating cell:" c (cr-code c))
                  (trc "appears-in-call-stack (newest first): " (length *call-stack*))
                  (loop for caller in (copy-list *call-stack*)
@@ -372,7 +372,7 @@ In brief, initialize ~0@*~a to (c-in ~2@*~s) instead of plain ~:*~s"
     (when (trcp c)
       (trc "optimizing away" c (c-state c))
       )
-
+    
     (count-it :c-optimized)
     
     (setf (c-state c) :optimized-away)

@@ -1,4 +1,4 @@
-;; -*- mode: Lisp; Syntax: Common-Lisp; Package: cells; -*-
+﻿;; -*- mode: Lisp; Syntax: Common-Lisp; Package: cells; -*-
 ;;;
 ;;; Copyright (c) 1995,2003 by Kenneth William Tilton.
 ;;;
@@ -57,8 +57,8 @@ subclass for them?)
 
 |#
 
-(eval-when (compile load)
-  (proclaim '(optimize (speed 2) (safety 3) (space 1) (debug 3))))
+;;;(eval-when (compile load)
+;;;  (proclaim '(optimize (speed 2) (safety 3) (space 1) (debug 3))))
 
 (in-package :cells)
 
