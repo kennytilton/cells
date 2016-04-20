@@ -22,6 +22,7 @@
 
 (in-package :common-lisp-user)
 
+#+allegro
 (eval-when (:compile-toplevel :load-toplevel :execute)
  (require :safeseq))
 

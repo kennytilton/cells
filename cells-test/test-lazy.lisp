@@ -1,4 +1,4 @@
-(in-package :cells)
+﻿(in-package :cells)
 
 (defvar *tests* ())
 
@@ -139,3 +139,24 @@
 
 #+test
 (lz-test)
+
+(defmd whenval ()
+  (a (c-in 0))
+  (b (make-c-dependent
+      :optimize :when-value-t
+      :value-state :unevaluated
+      :rule (c-lambda (when (> (^a) 1)
+                        (+ (^a) 40))))))
+
+(defun test-whenval ()
+  (cells-reset)
+  (let ((self (make-instance 'whenval)))
+    (assert (null (^b)))
+    (assert  (cd-useds (md-slot-cell self 'b)))
+    (incf (^a))
+    (assert (null (^b)))
+    (incf (^a))
+    (assert (= 42 (^b)))
+    (assert (null (cd-useds (md-slot-cell self 'b))))
+    (assert (null (c-callers (md-slot-cell self 'a))))
+    (print :fini)))
