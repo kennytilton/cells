@@ -1,9 +1,9 @@
-﻿;; -*- mode: Lisp; Syntax: Common-Lisp; Package: cells; -*-
+;; -*- mode: Lisp; Syntax: Common-Lisp; Package: cells; -*-
 #|
 
     Cells -- Automatic Dataflow Managememnt
 
-
+(See defpackage.lisp for license and copyright notigification)
 
 |#
 
@@ -86,7 +86,6 @@
      fm-mapc
      fm-pos
      fm-count-named
-     fm-count
      fm-top
      fm-first-above
      fm-nearest-if
@@ -133,16 +132,8 @@
 (defmacro u^ (type)
   `(upper self ,type))
 
-(defmacro u^v (type)
-  `(value (upper self ,type)))
-
 (defmacro n^ (type)
   `(nearest self ,type))
-
-(defmacro n^v (type)
-  `(value (nearest self ,type)))
-
-(export! u^v n^v)
 
 (defmethod kontainer (self) (fm-parent self))
 
@@ -303,14 +294,7 @@
                      (cond
                       ((eq n n1)(return-from fm-ordered-p t))
                       ((eq n n2)(return-from fm-ordered-p nil))))))
-
-(defun kids-ordered (k1 k2)
-  (assert (eq (fm-parent k1)(fm-parent k2)))
-  (if (find k2 (member k1 (kids (fm-parent k1))))
-      (list k1 k2)
-    (list k2 k1)))
-
-(export! kids-ordered)
+  
 
 (defmethod sub-nodes (other)
   (declare (ignore other)))
@@ -363,7 +347,7 @@
 (defun fm-heritage (self)
   (loop for p = self then (fm-parent p)
         while p
-        collect (list p (md-name p) (type-of p) (cz::md-state p))))
+        collect p))
 
 (defun fm-do-up (self &optional (fn 'identity))
   (when self
@@ -390,12 +374,9 @@
                               (fm-traverse family traveller :global-search global-search)))))
         (when (and must-find (null matches))
           (c-stop :fm-find-all-must-find-failed)
-          (describe family)
-          (loop for h in (fm-heritage family)
-                do (trcx heritage-ayway h))
           (fm-traverse family (lambda (node)
                                 (trc "known node" (md-name node))) :global-search global-search)
-          (brk "fm-find-all > *stop*ping...did not find ~a ~a ~a" family md-name global-search)
+          (break "fm-find-all > *stop*ping...did not find ~a ~a ~a" family md-name global-search)
           ;; (error 'fm-not-found (list md-name family global-search))
           )
         matches))
@@ -436,8 +417,6 @@
               (setf last (or (fm-find-last-if k test-fn) last))))
         (when (funcall test-fn family)
           family))))
-(defun fm-psib (self test-fn)
-  (some test-fn (cdr (member self (kids (fm-parent self))))))
 
 (defun fm-prior-sib (self &optional (test-fn #'true-that))
   "Find nearest preceding sibling passing TEST-FN"
@@ -533,6 +512,7 @@
         (c-assert (typep fm-parent 'family))
           (setf (fm-parent new-kid) fm-parent)
           (setf (kids fm-parent) (substitute new-kid old-kid (kids fm-parent)))
+          ;;(rplaca (member oldkid (kids fm-parent)) newkid)
           new-kid))
 
 ;----------------------------------------------------------
@@ -609,21 +589,6 @@
 (defmacro fm^v (id)
   `(value (fm^ ,id)))
 
-(defmacro fm^^ (scope-md-name md-name)
-  (let ((scope (gensym)))
-    `(let ((,scope (fm-ascendant-named self ,scope-md-name)))
-       (assert ,scope () "fm^^ unable to locate scope named ~a starting at ~a" ,scope-md-name self)
-       (without-c-dependency
-           (fm-find-one ,scope ,md-name
-             :skip-tree self
-             :must-find t
-             :global-search nil)))))
-
-(defmacro fm^^v (scope-md-name md-name)
-  `(value (fm^^ ,scope-md-name ,md-name)))
-
-(export! fm^^ fm^^v)
-
 (defmacro fm? (md-name &optional (starting 'self) (global-search t))
     `(fm-find-one ,starting ,(if (consp md-name)
                                                `(list ',(car md-name) ,(cadr md-name))
@@ -667,14 +632,6 @@
     `(length (fm-find-all ,family ,md-name
                  :must-find nil
                  :global-search ,global-search)))
-
-(defun fm-count (fm &key (test 'identity) &aux (ct 0))
-  (fm-traverse fm (lambda (md)
-                    (trx counting md)
-                    (when (funcall test md)
-                      (incf ct))))
-  ct)
-
 ;---------------------------------------------------------------
 (defun fm-top (fm &optional (test #'true-that) &aux (fm-parent (fm-parent fm)))
     (cond ((null fm-parent) fm)
@@ -691,12 +648,6 @@
     (if (funcall test fm)
        fm
        (fm-nearest-if test (fm-parent fm)))))
-
-(defun fm-ancestry-do (fm fn &optional (start t))
-  (when start (trcx fm-ancestry-do-sees-fm fm))
-  (when fm
-    (funcall fn fm)
-    (fm-ancestry-do (fm-parent fm) fn nil)))
 
 (defun fm-includes (fm sought)
   (fm-ancestor-p fm sought))
@@ -734,8 +685,8 @@
   (count-it :fm-find-one)
   (flet ((matcher (fm)
            (when diag
-             (trc
-              "fm-find-one matcher sees name" (md-name fm) :ofthing (type-of fm) :seeking md-name global-search))
+             (trc nil
+               "fm-find-one matcher sees name" (md-name fm) :ofthing (type-of fm) :seeking md-name global-search))
            (when (and (eql (name-root md-name)(md-name fm))
                    (or (null (name-subscript md-name))
                      (eql (name-subscript md-name) (fm-pos fm)))
@@ -752,16 +703,10 @@
                      :global-search global-search))))
       (when (and must-find (null match))
         (trc "fm-find-one > erroring fm-not-found, in family: " family :seeking md-name :global? global-search)
-        #+shhhh
-        (progn
-          (describe family)
-        
-          (loop for h in (fm-heritage family)
-              do (trcx heritage-anyway h))
-          (setq diag t must-find nil)
-          (fm-traverse family #'matcher
-            :skip-tree skip-tree
-            :global-search global-search))
+        (setq diag t must-find nil)
+        (fm-traverse family #'matcher
+                     :skip-tree skip-tree
+                     :global-search global-search)
         (c-break "fm-find-one > *stop*ping...did not find ~a ~a ~a" family md-name global-search)
         )
       match)))
@@ -775,9 +720,7 @@
 
 (defun kid-no (self)
   (unless (typep self 'model-object)
-    (brk "not a model object ~a" self))
+    (break "not a model object ~a" self))
   (when (and self (fm-parent self))
-    (unless (member self (kids (fm-parent self)))
-      (c-break "kid-no self ~a not member of kids ~a of parent ~a"
-        self (kids .pa) .pa))
+    (c-assert (member self (kids (fm-parent self))))
     (position self (kids (fm-parent self)))))

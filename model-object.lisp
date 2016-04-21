@@ -1,9 +1,9 @@
-﻿;; -*- mode: Lisp; Syntax: Common-Lisp; Package: cells; -*-
+;; -*- mode: Lisp; Syntax: Common-Lisp; Package: cells; -*-
 #|
 
     Cells -- Automatic Dataflow Managememnt
 
-
+(See defpackage.lisp for license and copyright notigification)
 
 |#
 
@@ -31,18 +31,13 @@
 
 (defmethod md-state ((self symbol))
   :alive)
-
-(defun e-restp (self)
-  (eq :eternal-rest (md-state self)))
-
 ;;; --- md obj initialization ------------------
 
 (defmethod shared-initialize :after ((self model-object) slotnames
                                       &rest initargs &key fm-parent)
   (declare (ignorable initargs slotnames fm-parent))
   ;(excl:schedule-finalization self 'md-finalize)
-  #+leak (c-md-record self)
-  ;; (setf (md-census-count self) 1) ;; bad idea if we get into reinitializing
+  (setf (md-census-count self) 1) ;; bad idea if we get into reinitializing
   (md-awake-record self)
   ;
   ; for convenience and transparency of mechanism we allow client code 
@@ -62,26 +57,15 @@
                    (slot-value self sn))
         ;; do (print (list (type-of self) sn sv (typep sv 'cell)))
         when (typep sv 'cell)
-        do (cond
-            ((md-slot-cell-type (type-of self) sn)
-             #+leak (setf (gethash sv *c-c*) (type-of self))
-             (md-install-cell self sn sv))
-            (*c-debug*
-             (brk "warning: cell ~a offered for non-cellular model/slot ~a/~a" sv sn (type-of self)))))
+        do (if (md-slot-cell-type (type-of self) sn)
+               (md-install-cell self sn sv)
+             (when *c-debug*
+               (break "warning: cell ~a offered for non-cellular model/slot ~a/~a" sv sn (type-of self)))))
     ;
     ; queue up for awakening
     ;
     (if (awaken-on-init-p self)
-        (progn
-          (when (and (not *within-integrity*)
-                  (zerop *data-pulse-id*))
-            ;; this is a top-level make-instance outside integrity
-            ;; and the initial zero data-pulse matches the default zero
-            ;; pulse-observed, so awaken-on-init-p's will not get their initial
-            ;; observations. Perhaps cells puls-observed should start at -1?
-            ;; but I like also getting *dp-id* off zero since the game is indeed underway
-            (data-pulse-next :toplvl-mki))
-          (md-awaken self))
+        (md-awaken self)
       (with-integrity (:awaken self)
         (md-awaken self)))
     ))
@@ -134,7 +118,6 @@
   (when *stop*
     (princ #\.)
     (return-from md-awaken))
-  
   (trc nil "md-awaken entry" self (md-state self))
   (c-assert (eql :nascent (md-state self)))
   (count-it :md-awaken)
@@ -186,7 +169,7 @@
 
          ((eq :nascent (c-state c))
           (c-assert (c-model c) () "c-awaken sees uninstalled cell" c)
-          
+          (c-assert (eq :nascent (c-state c)))
           (trc nil "c-awaken > awakening" c)
           (count-it :c-awaken)
                 
@@ -212,8 +195,8 @@
 
 (defun md-cell-flush (c)
   (push (cons (c-slot-name c)
-          #+live (c-pulse-observed c)
-          #-live c)
+          #+its-alive! (c-pulse-observed c)
+          #-its-alive! c)
     (cells-flushed (c-model c))))
 
 (defun md-slot-cell-flushed (self slot-name)
@@ -258,6 +241,9 @@
                 do (setf (md-slot-cell-type (class-name c) slot-name) new-type)))
         (cdar (push (cons slot-name new-type) (get class-name :cell-types)))))))
 
+#+test
+(md-slot-owning? 'm-index '.value)
+
 (defun md-slot-owning? (class-name slot-name)
   (assert class-name)
   (if (eq class-name 'null)
@@ -298,6 +284,9 @@
           when (and (md-slot-cell-type st sn)
                  (md-slot-owning? st sn))
           collect sn))))
+
+#+test
+(md-slot-owning? 'cells::family '.kids)
 
 (defun md-slot-value-store (self slot-name new-value)
   (trc nil "md-slot-value-store" self slot-name new-value)

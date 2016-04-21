@@ -1,4 +1,4 @@
-﻿;; -*- mode: Lisp; Syntax: Common-Lisp; Package: cells; -*-
+;; -*- mode: Lisp; Syntax: Common-Lisp; Package: cells; -*-
 ;;;
 ;;;
 ;;; Copyright (c) 1995,2003 by Kenneth William Tilton.
@@ -38,19 +38,19 @@
    ))
 
 (defobserver aa ((self xx3))
-    (trc  "output aa:" new-value))
+    (trc nil "output aa:" new-value))
 
 (defobserver bb ((self xx3))
-   (trc  "output bb:" new-value))
+   (trc nil "output bb:" new-value))
 
 (defobserver cc ((self xx3))
-    (trc  "output cc:" new-value))
+    (trc nil "output cc:" new-value))
 
 (defobserver dd ((self xx3))
-    (trc "output dd:" new-value))
+    (trc nil "output dd:" new-value))
 
 (defobserver ee ((self xx3))
-   (trc  "output ee:" new-value))
+   (trc nil "output ee:" new-value))
 
 (defobserver eex ((self xx3))
   (incf *eex*)
@@ -80,8 +80,6 @@
 ;; irrevocable damage may have been done.
 ;;
 
-#+xxxx
-(df-test)
 (def-cell-test df-test ()
   (cells-reset)
   (let* ((*eex* 0)

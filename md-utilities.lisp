@@ -1,9 +1,9 @@
-﻿;; -*- mode: Lisp; Syntax: Common-Lisp; Package: cells; -*-
+;; -*- mode: Lisp; Syntax: Common-Lisp; Package: cells; -*-
 #|
 
     Cells -- Automatic Dataflow Managememnt
 
-
+(See defpackage.lisp for license and copyright notigification)
 
 |#
 
@@ -30,6 +30,8 @@
     (declare (ignore self))
     nil))
 
+
+
 (export! *ntb-dbg*)
 
 (defgeneric not-to-be (self)
@@ -51,7 +53,7 @@
       (trcx not2be self)
       (when (and *md-awake* (not (gethash self *md-awake*)))
         (trcx not2be-not-awake!!!! self)))
-    #-live (setf (md-census-count self) -1)
+    (setf (md-census-count self) -1)
     (md-quiesce self)
     (md-awake-remove self))
 
@@ -65,23 +67,21 @@
           (dbg nil))
       
       (flet ((gok ()
-               (if (md-shuffling-off self)
-                   (trc nil "n2be bailing on already dead or doomed" self (md-state self)(md-doomed self))
+               (if (or (eq (md-state self) :eternal-rest)
+                     (md-doomed self))
+                   (trc nil "n2be bailing already dead or doomed" self (md-state self)(md-doomed self))
                  (progn
-                   ;(trx not-to-be!!!!!!! self)
                    (setf (md-doomed self) t)
                    (call-next-method)
-                   
                    (setf (fm-parent self) nil
                      (md-state self) :eternal-rest)
                    (md-awake-remove self)
                    (md-map-cells self nil
                      (lambda (c)
-                       (c-warn? (eq :quiesced (c-state c)) ()
+                       (c-assert (eq :quiesced (c-state c)) ()
                          "Cell ~a of dead model ~a not quiesced. Was not-to-be shadowed by
  a primary method? Use :before instead." c self))) ;; fails if user obstructs not.to-be with primary method (use :before etc)
-                   (loop for slot-name in (md-owning-slots self) ;;;; hhhhacck
-                       do (setf (slot-value self slot-name) nil))
+                   
                    ))))
         (if (not dbg)
             (gok)
@@ -90,29 +90,17 @@
             (gok)
             (when dbg (trc "finished nailing" self))))))))
 
-(defun md-shuffling-off (self)
-  (or (eq (md-state self) :eternal-rest)
-    (md-doomed self)))
 
-(export! md-shuffling-off)
 
 (defun md-quiesce (self)
-  #+leak (print `(md-quiesce!!!!!!! ,self))
-    
   #+xxxx (unless (search "QX-" (string (md-name self)))
     (trc "md-quiescing" self (type-of self)(type-of (fm-parent self))))
-
   (md-map-cells self nil (lambda (c)
                            (trc nil "quiescing" c)
-                           (c-warn? (not (find c *call-stack*)))
+                           (c-assert (not (find c *call-stack*)))
                            (c-quiesce c)))
-
   (when (register? self)
-    (fm-check-out self))
-
-  (setf (cells self) nil
-    (cells-flushed self) nil
-    (fm-parent self) nil))
+    (fm-check-out self)))
 
 (defun c-quiesce (c)
   (typecase c
@@ -123,8 +111,6 @@
        (setf (c-value-state caller) :uncurrent)
        (trc nil "c-quiesce totlalaly unlinking caller and making uncurrent" .dpid :q c :caller caller)
        (c-unlink-caller c caller))
-     (c-callers-clear c) ;; hhhhack working on 
-     (setf (c-model c) nil)
      (setf (c-state c) :quiesced) ;; 20061024 for debugging for now, might break some code tho
      )))
 
@@ -151,7 +137,7 @@
 (defun (setf md-census-count) (delta self)
   (when *model-pop*
     (incf (gethash (type-of self) *model-pop* 0) delta)
-    #-gogo
+    #-its-alive!
     (when (minusp (gethash (type-of self) *model-pop* 0))
       (warn  "minus pop ~a" self))))
 
@@ -191,13 +177,15 @@
                    (typecase self
                      (cons (cc (car self) from)
                        (cc (cdr self) from))
-                     
+                     #+nahhhh (mathx::box (count-it! :mathx-box-struct)
+                                    (cc (mathx::bx-mx self) from))
                      (model
                       (when (zerop (mod (incf ccc) 100))
                         (trc "cc" (md-name self) (type-of self)))
                       (count-it! :thing)
                       (count-it! :thing (type-of self))
-                      
+                      #+nahhhh (when (typep self 'mathx::problem)
+                                (count-it! :thing-from (type-of self) (type-of from)))
                       (when count-cells
                         (loop for (nil . c) in (cells self)
                             do (count-it! :live-cell)
@@ -227,7 +215,13 @@
                       (loop for slot in (md-owning-slots self) do
                             (loop for k in (let ((sv (slot-value self slot)))
                                              (if (listp sv) sv (list sv)))
-                                do (cc k self))))
+                                do (cc k self)))
+                      #+nahhh
+                      (progn
+                        (when (typep self 'mathx::mx-optr)
+                          (cc (mathx::opnds self) from))
+                        (when (typep self 'mathx::math-expression)
+                          (count-it! :math-expression))))
                      (otherwise
                       (count-it (type-of self)))))))
         (cc self nil)))))
@@ -246,7 +240,7 @@
                      (loop for c in chain do
                            (trc "called by" (c-slot-name c) :of (type-of (c-model c))))))
                  (setf (gethash c *c-d-d*)
-                   ;(brk "c-depend-depth ~a" c)
+                   ;(break "c-depend-depth ~a" c)
                    (progn
                      ;(trc "dd" c)
                      (1+ (loop for u in (c-useds c)

@@ -1,4 +1,4 @@
-﻿;; -*- mode: Lisp; Syntax: Common-Lisp; Package: cells; -*-
+;; -*- mode: Lisp; Syntax: Common-Lisp; Package: cells; -*-
 ;;;
 ;;; Copyright (c) 1995,2010 by Kenneth William Tilton.
 ;;;
@@ -22,9 +22,6 @@
 
 (in-package :common-lisp-user)
 
-(eval-when (:compile-toplevel :load-toplevel :execute)
- (require :safeseq))
-
 (defpackage :cells
   (:use #:common-lisp #:utils-kt)
   (:nicknames :cz)
@@ -33,13 +30,16 @@
    #+allegro #:excl
    #+clisp #:clos
    #+cmu #:mop
+   #+abcl #:mop
    #+cormanlisp #:common-lisp
    #+lispworks #:clos
    #+sbcl #:sb-mop
+   #+ecl #:clos
    #+openmcl-partial-mop #:openmcl-mop
    #+(and mcl (not openmcl-partial-mop)) #:ccl
+   #+(and ccl (not openmcl-partial-mop)) #:ccl
    
-   #-(or allegro clisp cmu cormanlisp lispworks mcl sbcl)
+   #-(or allegro clisp cmu ccl cormanlisp lispworks mcl sbcl ecl abcl)
    #.(cerror "Provide a package name."
        "Don't know how to find the MOP package for this Lisp.")
    

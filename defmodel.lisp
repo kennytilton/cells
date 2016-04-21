@@ -3,7 +3,7 @@
 
     Cells -- Automatic Dataflow Managememnt
 
-
+(See defpackage.lisp for license and copyright notigification)
 
 |#
 
@@ -120,7 +120,6 @@ the defmodel form for ~a" ',class ',class))))
               (when (and cell owning)
                 (setf (md-slot-owning-direct? ',class slotname) owning))))))
 
-(export! defmd-canonicalize-slot)
 (defun defmd-canonicalize-slot (slotname
                                 &key
                                 (cell nil cell-p)

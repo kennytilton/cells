@@ -1,9 +1,9 @@
-﻿;; -*- mode: Lisp; Syntax: Common-Lisp; Package: cells; -*-
+;; -*- mode: Lisp; Syntax: Common-Lisp; Package: cells; -*-
 #|
 
     Cells -- Automatic Dataflow Managememnt
 
-
+(See defpackage.lisp for license and copyright notigification)
 
 |#
 
@@ -28,30 +28,25 @@
        ;;;       ,(when debug
        ;;;          `(trc "integrity action entry" opcode defer-info ',body))
        ;;;       (when *c-debug*
-       #+shhh (when (eq opcode :change)
-         (trc "-------w/integ :change go--------------->:" defer-info))
+       ;;;         (when (eq opcode :change)
+       ;;;           (trc "-------w/integ :change go--------------->:" defer-info)))
        ,@body)
      nil
      #+noway (when *c-debug* ',body)))
 
-(export! with-cc without-integrity)
+(export! with-cc)
 
 (defmacro with-cc (id &body body)
   `(with-integrity (:change ,id)
-     ;;(print `(with-cc-fires!!!!!!!!!! ,',id))
      ,@body))
 
 (defun integrity-managed-p ()
   *within-integrity*)
 
-(defmacro without-integrity (&body body)
-  `(let (*within-integrity* *defer-changes* *call-stack*)
-     ,@body))
-
 (defun call-with-integrity (opcode defer-info action code)
   (declare (ignorable code))
   (when *stop*
-    (print :cwi-sees-stop!!!!!!!!!!!)
+    (print :cwi-sees-stop)
     (return-from call-with-integrity))
   (if *within-integrity*
       (if opcode
@@ -65,13 +60,12 @@
         ; thus by not supplying an opcode one can get something
         ; executed immediately, potentially breaking data integrity
         ; but signifying by having coded the with-integrity macro
-        ; that one is aware of this. If you have read this comment.
+        ; that one is aware of this. If you read this comment.
         (funcall action opcode defer-info))
 
     (flet ((go-go ()
              (let ((*within-integrity* t)
                    *unfinished-business*
-                   *finbiz-id*
                    *defer-changes*)
                (trc nil "initiating new UFB!!!!!!!!!!!!" opcode defer-info)
                ;(when *c-debug* (assert (boundp '*istack*)))
@@ -81,13 +75,9 @@
                    (data-pulse-next (cons opcode defer-info))))
                (prog1
                    (funcall action opcode defer-info)
-                 (let ((*finbiz-id* 0))
-                   ;(print :finishing-business)
-                   (finish-business)
-                   (assert-ufb-all-empty)
-                   ;; (assert-ufb-q-empty :tell-dependents)
-                   ;; (assert-ufb-q-empty :change)
-                   )))))
+                 (setf *finbiz-id* 0)
+                 ;(print :finishing-business)
+                 (finish-business)))))
       (if nil ;; *c-debug*
           (let ((*istack* (list (list opcode defer-info)
                             (list :trigger code)
@@ -101,7 +91,7 @@
                   (loop for f in (nreverse *istack*)
                       do (format t "~&istk> ~(~a~) " f)
                       finally (describe c)
-                         (brk "integ backtrace: see listener for deets")))))
+                         (break "integ backtrace: see listener for deets")))))
             (trc "*istack* unbinding"))
         (go-go)))))
 
@@ -109,7 +99,6 @@
   (cdr (assoc opcode *unfinished-business*)))
 
 (defun ufb-queue-ensure (opcode)
-  #-live (assert (find opcode *ufb-opcodes*))
   (or (ufb-queue opcode)
     (cdr (car (push (cons opcode (make-fifo-queue)) *unfinished-business*)))))
 
@@ -117,7 +106,7 @@
 
 (defun ufb-add (opcode continuation)
   #+trythis (when (and *no-tell* (eq opcode :tell-dependents))
-    (brk "truly queueing tell under no-tell"))
+    (break "truly queueing tell under no-tell"))
   (trc nil "ufb-add deferring" opcode (when (eql opcode :client)(car continuation)))
   (fifo-add (ufb-queue-ensure opcode) continuation))
 
@@ -137,22 +126,6 @@
                     (push (list op-code defer-info) *istack*))
           (funcall task op-or-q defer-info))))
 
-(defun assert-ufb-all-empty ()
-  #-live
-  (loop for (opcode . nil) in *unfinished-business*
-      do (assert-ufb-q-empty opcode)))
-
-(defun assert-ufb-q-empty (q)
-  (declare (ignorable q))
-  #-live
-  (bwhen (uqp (fifo-peek (ufb-queue q)))
-    (print `(assert-ufb-q-empty-fail ,q ,uqp))
-    (dolist (b (fifo-data (ufb-queue q)))
-      (trc "assert-ufb-q-empty sees unhandled elt" b q)
-      ;; (trc "unhandled" q (car b) (c-callers (car b)))
-      )
-    (brk "unexpected ufb> ufb ~a remain" q)))
-
 (defun finish-business ()
   (when *stop* (return-from finish-business))
   (incf *finbiz-id*)
@@ -171,11 +144,23 @@
     ; during their awakening to be handled along with those enqueued by cells of
     ; existing model instances.
     ;
-    (assert-ufb-q-empty :tell-dependents)
+    #-its-alive!
+    (bwhen (uqp (fifo-peek (ufb-queue :tell-dependents)))
+      (trcx fin-business uqp)
+      (dolist (b (fifo-data (ufb-queue :tell-dependents)))
+        (trc "unhandled :tell-dependents" (car b) (c-callers (car b))))
+      (break "unexpected 1> ufb needs to tell dependnents after telling dependents"))
     (let ((*no-tell* t))
       (just-do-it :awaken) ;--- md-awaken new instances ---
       )
     ;
+    ; OLD THINKING, preserved for the record, but NO LONGER TRUE:
+    ;  we do not go back to check for a need to :tell-dependents because (a) the original propagation
+    ; and processing of the :tell-dependents queue is a full propagation; no rule can ask for a cell that
+    ; then decides it needs to recompute and possibly propagate; and (b) the only rules forced awake during
+    ; awakening need that precisely because no one asked for their values, so there can be no dependents
+    ; to "tell". I think. :) So...
+    ; END OF OLD THINKING
     ;
     ; We now allow :awaken to change things so more dependents need to be told. The problem is the implicit 
     ; dependence on the /life/ of a model whenever there is a dependence on any /cell/ of that model. 
@@ -231,7 +216,7 @@
     (bwhen (task-info (fifo-pop (ufb-queue :change)))
       (trc nil "!!! finbiz --- CHANGE ---- (first of)" (fifo-length (ufb-queue :change)))
       (destructuring-bind (defer-info . task-fn) task-info
-        (trc nil "fbz: dfrd chg" defer-info (fifo-length (ufb-queue :change)))
+        #+xxx (trc  "fbz: dfrd chg" defer-info (fifo-length (ufb-queue :change)))
         (data-pulse-next (list :finbiz defer-info))
         (funcall task-fn :change defer-info)
         ;

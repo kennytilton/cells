@@ -1,9 +1,9 @@
-﻿;; -*- mode: Lisp; Syntax: Common-Lisp; Package: cells; -*-
+;; -*- mode: Lisp; Syntax: Common-Lisp; Package: cells; -*-
 #|
 
     Cells -- Automatic Dataflow Managememnt
 
-
+(See defpackage.lisp for license and copyright notigification)
 
 |#
 
@@ -49,14 +49,14 @@
 
 (defmacro c? (&body body)
   `(make-c-dependent
-    :code #+live nil #-live ',body
+    :code ',body
     :value-state :unevaluated
     :rule (c-lambda ,@body)))
 
 (defmacro c?+n (&body body)
   `(make-c-dependent
     :inputp t
-    :code #+live nil #-live ',body
+    :code ',body
     :value-state :unevaluated
     :rule (c-lambda ,@body)))
 
@@ -67,15 +67,7 @@
     :value-state :unevaluated
     :rule (c-lambda (without-c-dependency ,@body))))
 
-(defmacro c_?n (&body body)
-  `(make-c-dependent
-    :code '(without-c-dependency ,@body)
-    :inputp t
-    :lazy :until-asked
-    :value-state :unevaluated
-    :rule (c-lambda (without-c-dependency ,@body))))
-
-(export! c?n-dbg c_?n)
+(export! c?n-dbg)
 
 (defmacro c?n-dbg (&body body)
   `(make-c-dependent
@@ -88,7 +80,7 @@
 (defmacro c?n-until (args &body body)
   `(make-c-dependent
     :optimize :when-value-t
-    :code #+live nil #-live ',body
+    :code ',body
     :inputp t
     :value-state :unevaluated
     :rule (c-lambda ,@body)
@@ -114,14 +106,14 @@
 
 (defmacro c?dbg (&body body)
   `(make-c-dependent
-    :code #+live nil #-live ',body
+    :code ',body
     :value-state :unevaluated
     :debug t
     :rule (c-lambda ,@body)))
 
 (defmacro c?_ (&body body)
   `(make-c-dependent
-    :code #+live nil #-live ',body
+    :code ',body
     :value-state :unevaluated
     :lazy t
     :rule (c-lambda ,@body)))
@@ -129,7 +121,7 @@
 (defmacro c_? (&body body)
   "Lazy until asked, then eagerly propagating"
   `(make-c-dependent
-    :code #+live nil #-live ',body
+    :code ',body
     :value-state :unevaluated
     :lazy :until-asked
     :rule (c-lambda ,@body)))
@@ -137,7 +129,7 @@
 (defmacro c_?dbg (&body body)
   "Lazy until asked, then eagerly propagating"
   `(make-c-dependent
-    :code #+live nil #-live ',body
+    :code ',body
     :value-state :unevaluated
     :lazy :until-asked
     :rule (c-lambda ,@body)
@@ -147,7 +139,7 @@
   (let ((result (copy-symbol 'result))
         (thetag (gensym)))
      `(make-c-dependent
-       :code #+live nil #-live ',body
+       :code ',body
        :value-state :unevaluated
        :rule (c-lambda
               (let ((,thetag (gensym "tag"))
@@ -199,14 +191,14 @@
 
 (defmacro c... ((value) &body body)
   `(make-c-drifter
-    :code #+live nil #-live ',body
+    :code ',body
     :value-state :valid
     :value ,value
     :rule (c-lambda ,@body)))
 
 (defmacro c-abs (value &body body)
   `(make-c-drifter-absolute
-    :code #+live nil #-live ',body
+    :code ',body
     :value-state :valid
     :value ,value
     :rule (c-lambda ,@body)))

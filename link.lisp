@@ -1,18 +1,17 @@
-﻿;; -*- mode: Lisp; Syntax: Common-Lisp; Package: cells; -*-
+;; -*- mode: Lisp; Syntax: Common-Lisp; Package: cells; -*-
 #|
 
     Cells -- Automatic Dataflow Managememnt
 
 Copyright (C) 1995, 2006 by Kenneth Tilton
 
-
+(See defpackage.lisp for license and copyright notigification)
 
 |#
 
 (in-package :cells)
 
 (defun record-caller (used)
-  (assert used)
   (when (c-optimized-away-p used) ;; 2005-05-21 removed slow type check that used is cell
     (trc nil "depender not being recorded because used optimized away" *depender* (c-value used) :used used)
     (return-from record-caller nil))
@@ -39,22 +38,15 @@ Copyright (C) 1995, 2006 by Kenneth Tilton
       (caller-ensure used *depender*) ;; 060604 experiment was in unlink
       )
 
-    (when (c-debug *depender*)
-      (trx rec-caller-sets-usage!!!!!!!!!!!!!!!!!!!! *depender* used used-pos))
-    (set-usage-bit *depender* used-pos)
-    )
+    (handler-case
+        (setf (sbit (cd-usage *depender*) used-pos) 1)
+      (type-error (error)
+        (declare (ignorable error))
+        (setf (cd-usage *depender*)
+          (adjust-array (cd-usage *depender*) (+ used-pos 16) :initial-element 0))
+        (setf (sbit (cd-usage *depender*) used-pos) 1))))
   used)
 
-(defun set-usage-bit (c n) ;; c is caller
-  ;(trc c "set-usage-bit entry!!!!" c n (array-dimension (cd-usage c) 0))
-  #+xxxx(when (> n 32)
-    (loop for u in (cd-useds c)
-          do (trc "sub-used" u))
-    (trc "set-usage-bit entry > 10!!!!" c n (array-dimension (cd-usage c) 0)))
-  (unless (< n (array-dimension (cd-usage c) 0))
-    ;(trc c "set-usage-bit growing!!!!!" c n (+ n 16))
-    (setf (cd-usage c)(adjust-array (cd-usage c) (+ n 16) :initial-element 0)))
-  (setf (sbit (cd-usage c) n) 1))
 
 ;--- unlink unused --------------------------------
 
@@ -107,7 +99,7 @@ Copyright (C) 1995, 2006 by Kenneth Tilton
   (dolist (used (cd-useds caller))
     (trc nil "unlinking from used" caller used)
     (c-unlink-caller used caller))
-  (setf (cd-useds caller) nil) ;;;; hhhhack working on GC
+  ;; shouldn't be necessary (setf (cd-useds caller) nil)
   )
 
 (defmethod c-unlink-from-used (other)
