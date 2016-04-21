@@ -1,4 +1,4 @@
-;; -*- mode: Lisp; Syntax: Common-Lisp; Package: cells; -*-
+﻿;; -*- mode: Lisp; Syntax: Common-Lisp; Package: cells; -*-
 ;;;
 ;;; Copyright (c) 1995,2010 by Kenneth William Tilton.
 ;;;
@@ -21,6 +21,7 @@
 ;;; IN THE SOFTWARE.
 
 (in-package :common-lisp-user)
+
 
 (defpackage :cells
   (:use #:common-lisp #:utils-kt)
