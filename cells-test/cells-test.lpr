@@ -43,7 +43,7 @@
   :build-number 0
   :run-with-console nil
   :project-file-version-info nil
-  :on-initialization 'cells::test-cells
+  :on-initialization 'cells::hello-world
   :default-error-handler-for-delivery 'report-unexpected-error-and-exit
   :on-restart 'do-default-restart)
 
