@@ -90,7 +90,6 @@
       (when (> *c-prop-depth* 300)
         (c-break "c.propagate looping ~c" c)))
     
-
     ; --- manifest new value as needed ---
     ;
     ; 20061030 Trying not.to.be first because doomed instances may be interested in callers
