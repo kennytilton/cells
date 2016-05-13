@@ -5,4 +5,6 @@ Please check out the Wiki for motivation and general overview.
 
 n.b, This repository does not have my day-to-day working version of Cells. If you have issues with it lemme know and I'll take a few hours to bring things over.
 
-No documentation other than the test suite, but ping me for help. I am starting on a port to Clojure.
+No documentation other than the test suite, but ping me for help. I am starting on a port to Clojure called It's Alive! here: https://github.com/kennytilton/its-alive
+
+That is pretty far along and in some ways exceeds Cells in capability and even has a benign issue fixed.
