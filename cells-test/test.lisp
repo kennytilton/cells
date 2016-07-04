@@ -1,4 +1,4 @@
-﻿;; -*- mode: Lisp; Syntax: Common-Lisp; Package: cells; -*-
+;;; -*- mode: Lisp; Syntax: Common-Lisp; Package: cells; -*-
 ;;;
 ;;; Copyright (c) 1995,2003 by Kenneth William Tilton.
 ;;;

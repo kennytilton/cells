@@ -11,7 +11,7 @@
   :depends-on (:cells)
   :components ((:module "cells-test"
                  :serial t
-                 :components (;;(:file "test")
+                 :components ((:file "test")
                               (:file "hello-world")
                               (:file "test-kid-slotting")
                               (:file "test-lazy")
