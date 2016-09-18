@@ -48,11 +48,11 @@
                                        `(,',reader-fn self)))
                                    #+sbcl (unless (fboundp ',reader-fn)
                                             (defgeneric ,reader-fn (slot)))))))))
-     
+
      ;
      ; -------  defclass ---------------  (^slot-value ,model ',',slotname)
      ;
-     (prog1
+     (progn
          (defclass ,class ,(or directsupers '(model-object)) ;; now we can def the class
            ,(mapcar (lambda (s)
                       (list* (car s)
@@ -111,7 +111,8 @@ the defmodel form for ~a" ',class ',class))))
                                   (md-slot-value self ',slotname)))
                             ,(when unchanged-if
                                `(def-c-unchanged-test (,class ,slotname) ,unchanged-if)))))))
-           slotspecs))
+                 slotspecs)
+       (find-class ',class))
      (loop for slotspec in ',slotspecs
          do (destructuring-bind
                 (slotname &rest slotargs &key (cell t) owning &allow-other-keys)
