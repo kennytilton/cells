@@ -93,12 +93,12 @@ the defmodel form for ~a" ',class ',class))))
                          &key (cell t) unchanged-if (accessor slotname) reader writer type
                          &allow-other-keys)
                        slotspec
-                     
                      (declare (ignorable slotargs))
+                     (assert (if unchanged-if cell t) nil
+                               "defmodel '~s' has a slot named '~s' which has :unchanged-if specified~%but :cell set to nil. This is not valid" class slotname)
                      (when cell
                        (let* ((reader-fn (or reader accessor))
-                              (writer-fn (or writer accessor))
-                              )
+                              (writer-fn (or writer accessor)))
                          `(progn
                             ,(when writer-fn
                                `(defmethod (setf ,writer-fn) (new-value (self ,class))
