@@ -216,6 +216,8 @@
        (break)
         t)))
   )
+
+#|
 ;;
 ;; we'll toss off a quick class to test tolerance of cyclic
 
@@ -277,6 +279,7 @@
         (trc "ct-assert-error" error)
        (setf *stop* nil)
         t))))
+|#
 
 #+(or) ; FIXME: this test is borked
 (def-cell-test cv-test-talker ()
