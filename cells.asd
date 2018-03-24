@@ -1,6 +1,6 @@
 ;;;; -*- Mode: Lisp; Syntax: ANSI-Common-Lisp; Base: 10 -*-
 
-#+(or allegro lispworks cmu mcl clisp cormanlisp sbcl scl ecl ccl abcl)
+#+(or allegro lispworks cmu mcl clisp cormanlisp sbcl scl ecl ccl abcl clasp)
 (progn
 (declaim (optimize (debug 3) (speed 3) (safety 1) (compilation-speed 0)))
 
