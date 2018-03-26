@@ -38,8 +38,9 @@
    #+openmcl-partial-mop #:openmcl-mop
    #+(and mcl (not openmcl-partial-mop)) #:ccl
    #+(and ccl (not openmcl-partial-mop)) #:ccl
-   
-   #-(or allegro clisp cmu ccl cormanlisp lispworks mcl sbcl ecl abcl)
+   #+clasp #:clos
+
+   #-(or allegro clisp cmu ccl cormanlisp lispworks mcl sbcl ecl abcl clasp)
    #.(cerror "Provide a package name."
        "Don't know how to find the MOP package for this Lisp.")
    
